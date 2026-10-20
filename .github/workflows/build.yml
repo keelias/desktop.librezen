@@ -1,4 +1,5 @@
-name: Zen Release builds
+name: LibreZen experimental build pipeline (release publishing not configured)
+# WARNING: inherited release/AppImage/Flatpak jobs still reference Zen infrastructure; do not publish LibreZen releases with this workflow yet.
 
 on:
   workflow_dispatch:
@@ -559,7 +560,7 @@ jobs:
           cp configs/branding/${{ inputs.update_branch }}/logo128.png build/AppDir/zen.png && ln -s zen.png build/AppDir/.DirIcon
 
           if [ "${{ inputs.update_branch }}" = "twilight" ]; then
-            sed -i -e 's/Name=Zen Browser/Name=Zen Twilight/g' build/AppDir/zen.desktop
+            sed -i -e 's/Name=LibreZen Browser/Name=LibreZen Preview/g' build/AppDir/zen.desktop
             sed -i -e 's/StartupWMClass=zen/StartupWMClass=zen-twilight/g' build/AppDir/zen.desktop
           fi
 
