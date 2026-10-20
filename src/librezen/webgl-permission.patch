@@ -20,10 +20,7 @@ diff --git a/browser/modules/ObserverForwarder.sys.mjs b/browser/modules/Observe
 index 8cf14355f3..bdecc6c230 100644
 --- a/browser/modules/ObserverForwarder.sys.mjs
 +++ b/browser/modules/ObserverForwarder.sys.mjs
-@@ -12,4 +12,6 @@
- let lazy = {};
- ChromeUtils.defineESModuleGetters(lazy, {
-   CanvasPermissionPromptHelper:
+@@ -15,1 +15,3 @@
      "moz-src:///browser/modules/CanvasPermissionPromptHelper.sys.mjs",
 +  WebGLPermissionPromptHelper:
 +    "moz-src:///browser/modules/WebGLPermissionPromptHelper.sys.mjs",
@@ -830,8 +827,7 @@ diff --git a/browser/locales/en-US/browser/browser.ftl b/browser/locales/en-US/b
 diff --git a/browser/locales/en-US/browser/preferences/preferences.ftl b/browser/locales/en-US/browser/preferences/preferences.ftl
 --- a/browser/locales/en-US/browser/preferences/preferences.ftl
 +++ b/browser/locales/en-US/browser/preferences/preferences.ftl
-@@ -2024,2 +2024,5 @@
- permissions-location2 =
+@@ -2025,1 +2025,4 @@
      .label = Location
 +
 +permissions-webgl2 =
