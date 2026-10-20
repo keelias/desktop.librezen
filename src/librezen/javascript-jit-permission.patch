@@ -246,11 +246,6 @@ diff --git a/dom/ipc/ProcessIsolation.cpp b/dom/ipc/ProcessIsolation.cpp
 +
    // Check if we've already loaded a document with the given principal in some
    // content process. We want to finish the load in the same process in that
-@@ -936,2 +1006,3 @@ Result<NavigationIsolationOptions, nsresult> IsolationOptionsForNavigation(
-         if (!wgp->GetRemoteType().IsNotRemote() &&
--            principalIsSameSite(wgp->DocumentPrincipal())) {
-+            principalIsSameSite(wgp->DocumentPrincipal()) &&
-+            wgp->GetRemoteType().IsJitDisabled() == jitDisabled) {
 @@ -953,5 +1024,5 @@ Result<NavigationIsolationOptions, nsresult> IsolationOptionsForNavigation(
    options.mRemoteType = RemoteType::SharedWeb(originAttributes);
  
@@ -258,7 +253,7 @@ diff --git a/dom/ipc/ProcessIsolation.cpp b/dom/ipc/ProcessIsolation.cpp
 +  if (jitDisabled) {
      options.mRemoteType = options.mRemoteType.WithDisableJit(true);
    }
-@@ -1146,6 +1217,8 @@ Result<WorkerIsolationOptions, nsresult> IsolationOptionsForWorker(
+@@ -1146,6 +1216,8 @@ Result<WorkerIsolationOptions, nsresult> IsolationOptionsForWorker(
    options.mRemoteType =
        RemoteType::SharedWeb(resultOrPrecursor->OriginAttributesRef());
  
@@ -268,7 +263,7 @@ diff --git a/dom/ipc/ProcessIsolation.cpp b/dom/ipc/ProcessIsolation.cpp
 +  if (jitDisabled) {
      options.mRemoteType = options.mRemoteType.WithDisableJit(true);
    }
-@@ -1352,5 +1425,7 @@ Result<RemoteType, nsresult> PredictRemoteTypeForURI(
+@@ -1352,5 +1424,7 @@ Result<RemoteType, nsresult> PredictRemoteTypeForURI(
    RemoteType remoteType = RemoteType::SharedWeb(aOriginAttributes);
  
 -  if (!AllowJITForSiteOrigin(siteOriginURI, nullptr)) {
