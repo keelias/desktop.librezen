@@ -1,0 +1,6 @@
+diff --git a/browser/branding/unofficial/configure.sh b/browser/branding/unofficial/configure.sh
+--- a/browser/branding/unofficial/configure.sh
++++ b/browser/branding/unofficial/configure.sh
+@@ -5 +5 @@
+-MOZ_APP_DISPLAYNAME=Nightly
++MOZ_APP_DISPLAYNAME=LibreZen
