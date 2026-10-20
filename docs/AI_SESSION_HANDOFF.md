@@ -157,3 +157,15 @@ After commit `99b5219`, `npm run import` progressed through the original about-d
 ## Follow-up: brand-link hunk correction
 
 The first contextual revision accidentally included two link edits in one hunk whose line counts described only the first edit. The latest `aboutDialog-z-brand-links.patch` uses three separate, counted context hunks for the community link, project link, and privacy documentation link. Retry import from the latest branch and stop if Surfer reports any patch failure.
+
+
+## Import recovery instruction: consolidate the about-dialog edits
+
+The link-only patch has now been removed. Instead, its three URL changes are included in the existing `aboutDialog-xhtml.patch`, so a single patch owns all changes to `browser/base/content/aboutDialog.xhtml`; this is necessary for Surfer's per-patch reverse/reapply behavior.
+
+The last failed import had already reapplied the older about-dialog patch before stopping at the link-only patch. After fetching the latest commit, restore only that generated upstream source file to the engine tree's committed baseline before importing the consolidated patch:
+```fish
+git -C engine checkout -- browser/base/content/aboutDialog.xhtml
+npm run import
+```
+This does not delete the build directory or cache. If the checkout command reports that the file has no local changes, still run import; if `npm run import` fails, stop and report the complete failure instead of building or packaging.
