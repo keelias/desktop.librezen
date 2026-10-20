@@ -62,7 +62,8 @@ Useful project commands from the current `package.json`:
 - `npm run import` — regenerate/import the patched engine source.
 - `npm run build` — build.
 - `npm start` — run the development build via `python3 ./mach run --noprofile` from `engine/`.
-- `npm run package` — delegates to `surfer package`; **the exact produced artifact and its installability have not yet been verified**.
+- `cd engine && python3 ./mach package` — ran successfully on 2026-10-20 and produced `engine/obj-x86_64-pc-linux-gnu/dist/zen-1.0.0.en-US.linux-x86_64.tar.xz` (103,852,308 bytes). The archive's extracted browser launched using a temporary HOME and profile. This was a lower-level Mozilla package, not an Arch package or a finished installer.
+- The smoke-test archive reported `Name=Zen`, `Vendor=Mozilla`, and `SourceRepository=https://github.com/zen-browser/desktop`; it predates the identity settings in this commit and must not be presented as a branded LibreZen release.
 
 CachyOS is Arch-based, so advice based on `apt`/Debian packaging is not appropriate. The project's previous generic bootstrap attempts using Debian/RPM assumptions failed; inspect available tools and Surfer packaging configuration before prescribing commands.
 
@@ -126,3 +127,12 @@ The correct layout depends on the runtime and package contents; don't impose the
 6. Update the WebGL permission docs to reflect the already-confirmed tests without overstating the unchecked cases.
 
 Ask the user before any destructive data migration or change that might touch existing Zen/LibreWolf profiles. Avoid unnecessary full rebuilds, and do not promise asynchronous follow-up; do the work in the active session.
+
+
+## Results from the 2026-10-20 packaged-browser smoke test and identity pass
+
+The packaged browser launched in a temporary HOME/profile and did not touch Penny's normal profile. First-run logs included missing initial Zen workspace/session database tables and a savedGroups session-startup error; those should be rechecked on a second launch rather than assumed harmless. Visiting https://get.webgl.org/ logged “WebGL is currently disabled”, so packaged-build WebGL acceptance remains unresolved even though a previous development-build run reportedly displayed the permission prompt.
+
+The identity pass changes the project metadata and build configuration to LibreZen, while deliberately retaining the internal zen binary name until inherited packaging integrations are migrated. The tracked XDG path patch lowercases the application name, so librezen is the expected directory component, pending confirmation from a rebuilt package. The install destinations are documented in docs/branding-and-installation.md; do not migrate profiles.
+
+The inherited release/AppImage/Flatpak automation still includes Zen-specific deployment assumptions. Do not use it to publish releases. Rebuild/repackage this revision and inspect application.ini before attempting any installation.
