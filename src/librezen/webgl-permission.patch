@@ -20,7 +20,7 @@ diff --git a/browser/modules/ObserverForwarder.sys.mjs b/browser/modules/Observe
 index 8cf14355f3..bdecc6c230 100644
 --- a/browser/modules/ObserverForwarder.sys.mjs
 +++ b/browser/modules/ObserverForwarder.sys.mjs
-@@ -23,1 +23,3 @@
+@@ -23,1 +25,3 @@
 +  WebGLPermissionPromptHelper:
 +    "moz-src:///browser/modules/WebGLPermissionPromptHelper.sys.mjs",
  });
@@ -824,7 +824,7 @@ diff --git a/browser/locales/en-US/browser/browser.ftl b/browser/locales/en-US/b
 diff --git a/browser/locales/en-US/browser/preferences/preferences.ftl b/browser/locales/en-US/browser/preferences/preferences.ftl
 --- a/browser/locales/en-US/browser/preferences/preferences.ftl
 +++ b/browser/locales/en-US/browser/preferences/preferences.ftl
-@@ -2027,1 +2027,4 @@
+@@ -2027,1 +2030,4 @@
 +permissions-webgl2 =
 +    .label = WebGL
 +
