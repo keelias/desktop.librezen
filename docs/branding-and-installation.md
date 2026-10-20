@@ -8,13 +8,14 @@ _Last reviewed: 2026-10-20._
 | --- | --- | --- |
 | Product name | LibreZen / LibreZen Browser | Use LibreZen for the application name, and LibreZen Browser in descriptive UI. |
 | Source repository | keelias/desktop.librezen | Upstream Zen and Mozilla references remain where they describe inherited code or attribution. |
-| Surfer product ID | org.librezen.browser | This is packaging/distribution metadata; it does not replace Mozilla's Firefox engine ID. |
+| Project umbrella / vendor | Volcan | LibreZen is the product; Volcan is the umbrella behind it. |
+| Surfer application ID / distribution ID | systems.volcan.librezen | Reverse-domain identity derived from Penny's volcan.systems domain; it does not replace Mozilla's Firefox engine ID. |
 | User command | librezen | Intended for the future Linux archive installer. |
 | Internal engine binary | zen | Deliberately retained in this first branding pass because inherited AppDir/build workflows still expect that filename. Do not rename by blanket replacement. |
 | Archive layout | zen/ at the archive root | Confirmed by the lower-level Mozilla mach package output. |
 | XDG app directory component | librezen | The tracked nsXREDirProvider.cpp patch lowercases the configured app name before constructing the app-specific directory. This expected path behavior must be verified after rebuilding. |
 
-The build configuration requests MOZ_APP_BASENAME=LibreZen, distribution ID org.librezen.browser, and this repository as MOZ_SOURCE_REPO. The browser/moz.configure patch changes Firefox's implied MOZ_APP_VENDOR value to LibreZen (it cannot be directly exported from mozconfig on this Firefox source revision); a separate reversible patch changes the unofficial branding display name from Nightly to LibreZen. These source changes have **not yet been validated in a successfully rebuilt archive**. The archive tested on 2026-10-20 still reported Name=Zen, Vendor=Mozilla, and Zen's source URL because it was built before the identity edit.
+The build configuration uses LibreZen as the product name, Volcan as the vendor/umbrella, systems.volcan.librezen as the Surfer application ID and distribution ID, and this repository as MOZ_SOURCE_REPO. The browser/moz.configure patch sets Firefox's implied MOZ_APP_VENDOR to Volcan (it cannot be directly exported from mozconfig on this Firefox source revision). The profile and user-appdir defaults are both explicitly set to librezen in the tracked toolkit patch so a future import preserves profile isolation. These values must still be rechecked after a clean import and packaged rebuild; the already-tested local build confirmed Name=LibreZen, Vendor=LibreZen, and Profile=librezen before this Volcan vendor change.
 
 The lowercase XDG paths to verify in a fresh test profile are:
 
