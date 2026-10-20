@@ -42,7 +42,7 @@ The archive path is being validated before an installer is added. The intended m
 | User-wide | ~/.local/opt/librezen/ | ~/.local/bin/librezen | $XDG_DATA_HOME/applications/librezen.desktop (defaults to ~/.local/share/applications/) |
 | System-wide manual install | /opt/librezen/ | /usr/local/bin/librezen | /usr/local/share/applications/librezen.desktop |
 
-The future installer must validate that the archive is a LibreZen build before installing it, keep program files separate from browser data, and remove only files it owns during uninstall. A profile/config/cache directory must never be deleted by the program uninstaller.
+The desktop-entry template lives at `packaging/linux/librezen.desktop`; it uses `Exec=librezen %U`, `Icon=librezen`, and identifies LibreZen as a Volcan project. The installer/package still needs to install the matching icon and launcher command at the appropriate user-wide or system-wide locations. The future installer must validate that the archive is a LibreZen build before installing it, keep program files separate from browser data, and remove only files it owns during uninstall. A profile/config/cache directory must never be deleted by the program uninstaller.
 
 The inherited AppImage and Flatpak workflows are **not release-ready**. They still contain Zen-specific naming and deployment assumptions, including an upstream Zen Flatpak repository. Do not trigger the inherited release workflow to publish a LibreZen release until it has been audited and reworked.
 
