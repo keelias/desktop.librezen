@@ -21,8 +21,7 @@ index 8cf14355f3..bdecc6c230 100644
 --- a/browser/modules/ObserverForwarder.sys.mjs
 +++ b/browser/modules/ObserverForwarder.sys.mjs
 @@ -14,1 +14,3 @@
--ChromeUtils.defineESModuleGetters(lazy, {
-+ChromeUtils.defineESModuleGetters(lazy, {
+ ChromeUtils.defineESModuleGetters(lazy, {
 +  WebGLPermissionPromptHelper:
 +    "moz-src:///browser/modules/WebGLPermissionPromptHelper.sys.mjs",
 @@ -28,3 +30,6 @@
@@ -829,11 +828,10 @@ diff --git a/browser/locales/en-US/browser/preferences/preferences.ftl b/browser
 --- a/browser/locales/en-US/browser/preferences/preferences.ftl
 +++ b/browser/locales/en-US/browser/preferences/preferences.ftl
 @@ -2027,1 +2027,4 @@
--permissions-localhost2 =
 +permissions-webgl2 =
 +    .label = WebGL
 +
-+permissions-localhost2 =
+ permissions-localhost2 =
 diff --git a/browser/locales/en-US/browser/preferences/permissions.ftl b/browser/locales/en-US/browser/preferences/permissions.ftl
 --- a/browser/locales/en-US/browser/preferences/permissions.ftl
 +++ b/browser/locales/en-US/browser/preferences/permissions.ftl
