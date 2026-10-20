@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=LibreZen Browser
+GenericName=Web Browser
+Comment=LibreZen Browser — a Volcan project
+Exec=librezen %U
+Icon=librezen
+Terminal=false
+StartupNotify=true
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;
+Keywords=Web;Browser;Internet;LibreZen;
