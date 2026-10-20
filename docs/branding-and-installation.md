@@ -14,9 +14,9 @@ _Last reviewed: 2026-10-20._
 | Archive layout | zen/ at the archive root | Confirmed by the lower-level Mozilla mach package output. |
 | XDG app directory component | librezen | The tracked nsXREDirProvider.cpp patch lowercases the configured app name before constructing the app-specific directory. This expected path behavior must be verified after rebuilding. |
 
-The build configuration requests MOZ_APP_BASENAME=LibreZen, distribution ID org.librezen.browser, and this repository as MOZ_SOURCE_REPO. The browser/moz.configure patch changes Firefox's implied MOZ_APP_VENDOR value to LibreZen (it cannot be directly exported from mozconfig on this Firefox source revision); a separate reversible patch changes the unofficial branding display name from Nightly to LibreZen. These source changes have **not yet been validated in a successfully rebuilt archive**. The archive tested on 2026-10-20 still reported Name=Zen, Vendor=Mozilla, and Zen's source URL because it was built before the identity edit.
+The build configuration requests MOZ_APP_BASENAME=LibreZen, distribution ID org.librezen.browser, and this repository as MOZ_SOURCE_REPO. The browser/moz.configure patch changes Firefox's implied MOZ_APP_VENDOR value to LibreZen (it cannot be directly exported from mozconfig on this Firefox source revision); a separate reversible patch changes the unofficial branding display name from Nightly to LibreZen. **Validation completed on 2026-10-20:** the latest rebuild succeeded, the newly packaged application's application.ini reported Name=LibreZen, Vendor=LibreZen, and SourceRepository=https://github.com/keelias/desktop.librezen, and the packaged browser launched from an isolated temporary profile. Some remaining Nightly strings may still appear in cosmetic UI surfaces.
 
-The lowercase XDG paths to verify in a fresh test profile are:
+The tracked path patch lowercases the configured application name. These are the intended lowercase XDG paths, but the actual paths created by the rebuilt browser **have not yet been verified**:
 
 - $XDG_CONFIG_HOME/librezen (normally ~/.config/librezen)
 - $XDG_CACHE_HOME/librezen (normally ~/.cache/librezen)
@@ -32,9 +32,9 @@ The lower-level command that was tested was Mozilla's packaging target, not an A
     cd engine
     python3 ./mach package
 
-It produced an archive of the form engine/obj-x86_64-pc-linux-gnu/dist/zen-1.0.0.en-US.linux-x86_64.tar.xz. The tested archive was 103,852,308 bytes and launched after being extracted to a temporary directory with an isolated HOME/profile. It is a browser bundle, **not** a .pkg.tar.zst, AppImage, Flatpak, or ready-to-publish release.
+It produced an archive of the form engine/obj-x86_64-pc-linux-gnu/dist/zen-1.0.0.en-US.linux-x86_64.tar.xz. The latest archive launched after being extracted to a temporary directory with an isolated HOME, XDG directories, and browser profile. It is a browser bundle, **not** a .pkg.tar.zst, AppImage, Flatpak, or ready-to-publish release.
 
-The archive path is being validated before an installer is added. The intended manual archive layout is:
+The archive/install path still needs validation before an installer is added. The intended manual archive layout is:
 
 | Scope | Browser files | Launcher | Desktop entry |
 | --- | --- | --- | --- |
@@ -45,15 +45,11 @@ The future installer must validate that the archive is a LibreZen build before i
 
 The inherited AppImage and Flatpak workflows are **not release-ready**. They still contain Zen-specific naming and deployment assumptions, including an upstream Zen Flatpak repository. Do not trigger the inherited release workflow to publish a LibreZen release until it has been audited and reworked.
 
-## Build and test after the identity change
+## Current validation status and next checks
 
-Use the repository's pinned Node, Python, and Rust versions. After pulling the identity changes:
+Already completed on 2026-10-20: `npm run import` succeeded and applied the tracked patch set; the full `npm run build` succeeded; `cd engine && python3 ./mach package` produced a Linux archive; its `application.ini` reported `Name=LibreZen`, `Vendor=LibreZen`, and this project's source repository; and the browser launched from an isolated temporary HOME/profile. The WebGL permission flow was also tested and confirmed working. Do not repeat the full build unless source changes require it.
 
-1. Run npm run import so the tracked patches/configuration are applied to the generated engine tree.
-2. Run the full build. The previous successful path used env SCCACHE_C_CUSTOM_CACHE_BUSTER=librezen-path-fix-20261016 npm run build to work around stale local build paths.
-3. Run cd engine && python3 ./mach package.
-4. Inspect application.ini in the archive. It should report Name=LibreZen, Vendor=LibreZen, and this project's source repository.
-5. Launch only in a temporary directory with a temporary HOME/profile. Verify app identity, XDG paths, a second launch, and the WebGL permission flow.
+The remaining user-assisted runtime check is filesystem isolation. Extract the latest archive to a temporary directory and run it with a fresh temporary HOME plus distinct XDG config/cache/data/state directories. Then check `about:support` for the Profile Directory and inspect which of those temporary directories actually gained LibreZen files. Record paths separately for profile data, XDG config, cache, persistent data, and state; do not infer all five from `MOZ_APP_BASENAME` alone. Relaunch with the same temporary profile to ensure startup still works. Do not move, delete, or reuse any normal Zen Browser or LibreWolf profile.
 
 The release-oriented npm run package command uses Surfer to create MAR/update files in addition to the browser archive. Its release channel must be explicitly configured; generating update metadata does not mean a working LibreZen update server or published GitHub release exists.
 
