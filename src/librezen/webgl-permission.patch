@@ -24,9 +24,11 @@ index 8cf14355f3..bdecc6c230 100644
 +  WebGLPermissionPromptHelper:
 +    "moz-src:///browser/modules/WebGLPermissionPromptHelper.sys.mjs",
  });
-@@ -38,0 +41,2 @@
+@@ -38,2 +40,4 @@
+   "webauthn-prompt": ["WebAuthnPromptHelper"],
 +  "webgl-permissions-prompt": ["WebGLPermissionPromptHelper"],
 +  "webgl-permissions-prompt-hide-doorhanger": ["WebGLPermissionPromptHelper"],
+ };
 diff --git a/browser/modules/WebGLPermissionPromptHelper.sys.mjs b/browser/modules/WebGLPermissionPromptHelper.sys.mjs
 new file mode 100644
 index 0000000..ead4eef
