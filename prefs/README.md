@@ -1,7 +1,8 @@
 # Browser Preferences
 
-This directory contains configuration files for Zen. They are divided by folder according to the source / component they belong to and further divided by file according to their purpose.
+This directory contains browser preference declarations for LibreZen. Preferences are divided by source/component, then by purpose.
 
-- `firefox/`: Preferences to override Firefox defaults.
-- `zen/`: Preferences to configure Zen-specific features.
-- `privatefox/` & `fastfox/`: _Some_ of the preferences got extracted from [Betterfox](https://github.com/yokoffing/Betterfox).
+- `firefox/`: overrides for Mozilla Firefox defaults.
+- `zen/`: preferences for inherited Zen-specific behavior.
+- `librezen/`: LibreZen-specific preferences.
+- `privatefox/` and `fastfox/`: selected preferences derived from Betterfox.
