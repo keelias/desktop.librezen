@@ -1,0 +1,128 @@
+# LibreZen — session handoff and next steps
+
+_Last updated: 2026-10-20_
+
+This note is a continuity aid for the next development session. Read it first, then verify the current checkout and repository state before editing anything. It records known results and the user's next requested task; it is not a substitute for inspecting the actual source.
+
+## Project identity and goal
+
+- Repository: [`keelias/desktop.librezen`](https://github.com/keelias/desktop.librezen).
+- Known working branch: `security/librewolf-hardening`.
+- Last verified remote commit at handoff time: `61fafe9fa75ccdfcf456356fc82040debaa17e8e` — `fix(security): anchor WebGL observer entries before object close`.
+- LibreZen's intended product direction is **Zen Browser's frontend/UI and Mozilla Firefox base, with LibreWolf privacy/security features and options**. This is a fork/project identity, not an official Zen Browser or LibreWolf release.
+- The target test machine is Penny's Arch-family PC running CachyOS. The code should ideally be maintainable and installable on Arch Linux as well, not only runnable from the source tree.
+
+## Latest successful work: WebGL permission prompt
+
+The first LibreWolf WebGL-permission feature port is implemented and has passed a successful build plus initial runtime testing.
+
+Relevant source files:
+- Implementation patch: `src/librezen/webgl-permission.patch`
+- Documentation: `docs/security/webgl-permission.md`
+
+Important architecture rule: this project uses Surfer patches to populate the generated `engine/` tree. Persistent changes belong in the tracked patch/source files under `src/`; do not hand-edit generated `engine/` files as the long-term fix. Re-importing regenerates/reapplies the tracked patch set.
+
+Implementation includes the engine-side WebGL permission gate for HTML canvas and OffscreenCanvas/worker paths, a browser-process prompt helper, per-origin allow/block decisions, a remember decision option, permission-management UI, URL-bar indicators/assets, localization, and preferences:
+- `librewolf.webgl.prompt = true`
+- `librewolf.webgl.prompt.hide = false`
+- Existing `webgl.disabled` remains the global WebGL kill switch.
+
+Validation reported by the user:
+- `npm run import` completed successfully and applied the full patch set (264 patches).
+- A full `npm run build` succeeded in about 10 minutes 49 seconds.
+- The user launched the compiled browser with `npm start`, tested https://get.webgl.org/, and confirmed the prompt works.
+- Both session-only and persistent permission modes were tested and reported to work.
+
+Useful remaining tests, not prerequisites for celebrating the initial port:
+1. Private-window behavior: remember checkbox should not be offered, and grants should not persist beyond the private session.
+2. Remembered block, removing/revoking a permission, and retrying the same origin.
+3. A second origin should receive an independent decision.
+4. An OffscreenCanvas/WebGL worker test, where one is available.
+
+**Documentation follow-up:** `docs/security/webgl-permission.md` still contains a caveat saying the built binary has not yet been runtime-tested and frames all checklist steps as expectations. That was true before the recent tests and is now stale. Update it only to match tests actually performed; mark private-window/origin/worker checks separately until verified.
+
+## Build and environment notes
+
+Known working local checkout path from the prior session: `~/.src/librezen.source/` (on Penny's machine; verify before assuming it is still the active checkout). The generated engine is under `engine/`, with build output in `engine/obj-x86_64-pc-linux-gnu`.
+
+Known tool versions in the environment:
+- Node.js 22.23.3
+- Python 3.11.17 (managed with uv)
+- Rust 1.95.0
+
+A successful full build was run as:
+
+```sh
+env SCCACHE_C_CUSTOM_CACHE_BUSTER=librezen-path-fix-20261016 npm run build
+```
+
+The cache-buster was a local build-environment workaround for stale generated make dependency paths after the project directory was renamed. Preserve the existing object directory/cache and do not run destructive cleanup/rebuild steps unnecessarily. Do not rebuild just to reconfirm what already passed.
+
+Useful project commands from the current `package.json`:
+- `npm run import` — regenerate/import the patched engine source.
+- `npm run build` — build.
+- `npm start` — run the development build via `python3 ./mach run --noprofile` from `engine/`.
+- `npm run package` — delegates to `surfer package`; **the exact produced artifact and its installability have not yet been verified**.
+
+CachyOS is Arch-based, so advice based on `apt`/Debian packaging is not appropriate. The project's previous generic bootstrap attempts using Debian/RPM assumptions failed; inspect available tools and Surfer packaging configuration before prescribing commands.
+
+## Next requested task: audit LibreZen branding, paths, packaging, and installation
+
+The user explicitly asked to pause feature-porting and make the product identity consistent throughout the meaningful parts of the repository, especially configuration/data paths and the install layout for user-wide and system-wide installation. They also asked how this should eventually be installed on Penny's Arch Linux PC.
+
+Treat this as the next main task. First perform a read-only audit, then propose and implement a cohesive plan in small, reviewable changes. Do not perform a blanket string replacement: upstream attribution, inherited Zen code/assets, license material, Mozilla identity, and upstream source references must remain correct where appropriate.
+
+### Known branding inconsistencies to investigate
+
+At last inspection on `security/librewolf-hardening`:
+- `README.md` is still largely the upstream Zen README: heading says “Zen Browser,” Zen logos/badges/download/docs/release links and upstream contribution links remain. Rebrand it for LibreZen while retaining appropriate attribution and links to upstream projects.
+- `package.json` still has `"name": "zen-desktop"`, an empty description/author, and repository, bugs, and homepage URLs pointing to `zen-browser/desktop`. Decide carefully which metadata should identify LibreZen and which should continue to point to upstreams.
+- Some asset names and source references contain “Zen.” Inspect usage before renaming; inherited assets do not all need to be renamed.
+- The WebGL documentation is now behind the latest runtime test results, as noted above.
+
+Search for meaningful occurrences in places such as application/window names, about pages, branding resources, default preferences, program/executable names, app IDs, desktop launchers, icons, MIME handlers, update/release metadata, package scripts/manifests, installer destinations, profile/config/cache paths, and docs. Exclude vendored/upstream material from blanket replacements unless it is genuinely part of the end-user LibreZen identity.
+
+### Paths and identity choices to evaluate
+
+The user previously suggested keeping LibreZen's config/data separate from existing Zen Browser and LibreWolf installations, with `~/.config/LibreZen` as a tentative config path. Treat that as a preference to evaluate—not proof that the current browser/profile code already uses it, and not a decision to blindly relocate Firefox profile data.
+
+Audit the existing profile/data path behavior and XDG handling first. Decide and document clear, consistent identities for:
+- user-facing product and window name (`LibreZen` / `LibreZen Browser`, as appropriate);
+- executable/launcher command (likely `librezen`);
+- application ID / desktop-entry ID / icons and metadata;
+- browser profile/data directory (keep isolated from Zen and LibreWolf);
+- configuration, cache, and state paths;
+- source/build directory versus installed program directory.
+
+Do not rename the Firefox profile root to the config directory merely for branding if that breaks profile behavior or existing Mozilla conventions. Ensure paths that are code-sensitive, ABI/build-sensitive, or upstream-owned are changed only with evidence and tests.
+
+### Arch Linux installation question
+
+The user wants a practical future installation path for Penny's Arch Linux PC. This is **not solved yet**. Do not claim `npm run package` generates an Arch package until its output has been inspected.
+
+Inspect the current Surfer package configuration and `npm run package` output, along with existing packaging scripts/manifests. Then recommend an install strategy that matches the actual artifacts:
+- Native Arch packaging (for example, a maintained PKGBUILD/AUR-style route) if feasible and reproducible; and/or
+- a self-contained release archive installed user-wide without root, and/or
+- a system-wide installation option.
+
+Keep build/source prerequisites distinct from end-user runtime/install prerequisites. Prefer an install/uninstall path with no root requirement for a user install; document the system-wide variant and exactly which files it owns. Plan desktop launcher and icon integration, app/profile isolation, upgrades, and uninstall behavior. Do not modify the machine's system install while doing the audit.
+
+Potential conventional destinations to assess (not decisions until validated):
+- User executable/launcher: `~/.local/bin/`
+- User application files: `~/.local/opt/librezen/` or another clearly documented app directory
+- User desktop entry/icons: `~/.local/share/applications/`, `~/.local/share/icons/`
+- System application files: `/opt/librezen/` or a suitable `/usr/lib/` layout with a launcher under `/usr/bin/`
+- System desktop entry/icons: `/usr/share/applications/`, `/usr/share/icons/`
+- Tentative config path discussed: `~/.config/LibreZen/`; cache/state should follow a consistent XDG-compatible plan.
+The correct layout depends on the runtime and package contents; don't impose these paths before inspecting how Firefox/Zen resolve profiles and resources.
+
+### Suggested workflow for the next session
+
+1. Read this handoff, then check local `git status`, `git branch --show-current`, and `git log -5 --oneline`. The remote repo received this handoff commit, so fetch/pull it before further edits if the local checkout is behind. Preserve unrelated working-tree changes.
+2. Inspect relevant tracked configuration and build/package files, plus the full `README.md` and any existing branding/install files. Use targeted repository-wide search for likely branding, application ID, paths, and install strings.
+3. Write a short inventory of current values versus proposed values, identifying occurrences that should intentionally remain upstream.
+4. Decide the branding contract and profile/config/cache layout, then implement in small patches and test searches/build/runtime as practical.
+5. Inspect `npm run package` output and implement/document a safe Arch install path. Verify both user-wide and system-wide file placement/removal where feasible.
+6. Update the WebGL permission docs to reflect the already-confirmed tests without overstating the unchecked cases.
+
+Ask the user before any destructive data migration or change that might touch existing Zen/LibreWolf profiles. Avoid unnecessary full rebuilds, and do not promise asynchronous follow-up; do the work in the active session.
