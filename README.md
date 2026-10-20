@@ -15,7 +15,7 @@ LibreZen is **not** an official release of, or affiliated with, Mozilla, Zen Bro
 ## Project status
 
 - The Firefox source revision is pinned in surfer.json; changes to upstream dependencies are imported through Surfer.
-- A Linux x86-64 archive was successfully generated with Mozilla's mach package target and launched in a temporary HOME/profile on 2026-10-20. That package predates the current LibreZen identity edits, so rebuild and verify before installing it.
+- A Linux x86-64 archive was successfully generated with Mozilla's mach package target and launched in a temporary HOME/XDG/profile environment on 2026-10-20. The latest archive's application.ini reports LibreZen for the name and vendor and points to this repository. The actual default profile/XDG directory paths still need a dedicated runtime check before installing it.
 - There is not yet a published LibreZen release or a configured LibreZen update service.
 - The inherited AppImage/Flatpak release automation still contains Zen-specific deployment assumptions and must not be used to publish LibreZen releases.
 
@@ -41,7 +41,7 @@ The archive is written below engine/obj-*/dist/. It is a compressed application 
 - Persistent engine changes belong in tracked source patches/configuration, not generated files under engine/.
 - Keep LibreZen browser data separate from Zen Browser and LibreWolf profiles. Never migrate or delete profile data automatically.
 - Retain upstream copyright headers, license notices, and source attribution.
-- Treat privacy and security work as unverified until tested in a rebuilt packaged application; inherited browser behavior can still apply.
+- Treat each privacy/security feature as unverified until its specific behavior has been tested in a rebuilt packaged application; a successful build alone does not establish that the feature works.
 
 ## Upstream projects and licensing
 
