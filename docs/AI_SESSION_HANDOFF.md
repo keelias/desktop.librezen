@@ -152,3 +152,8 @@ For the next attempt, fetch the latest branch and run `npm run import` as a sepa
 ## Follow-up: first recovery import exposed contextless patch hunk failure
 
 After commit `99b5219`, `npm run import` progressed through the original about-dialog patch and then failed to apply `aboutDialog-z-brand-links.patch`. Its URL edits were insufficiently contextual and used brittle hunk positions. This update rewrites them using stable context, and likewise supplies context to the vendor and unofficial display-name patches. Re-run `npm run import` and stop on any failure; no successful build has run since the LibreZen identity edits.
+
+
+## Follow-up: brand-link hunk correction
+
+The first contextual revision accidentally included two link edits in one hunk whose line counts described only the first edit. The latest `aboutDialog-z-brand-links.patch` uses three separate, counted context hunks for the community link, project link, and privacy documentation link. Retry import from the latest branch and stop if Surfer reports any patch failure.
