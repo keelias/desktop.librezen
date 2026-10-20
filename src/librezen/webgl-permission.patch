@@ -24,8 +24,7 @@ index 8cf14355f3..bdecc6c230 100644
 +  WebGLPermissionPromptHelper:
 +    "moz-src:///browser/modules/WebGLPermissionPromptHelper.sys.mjs",
  });
-@@ -38,1 +40,3 @@
-   "webauthn-prompt": ["WebAuthnPromptHelper"],
+@@ -38,0 +41,2 @@
 +  "webgl-permissions-prompt": ["WebGLPermissionPromptHelper"],
 +  "webgl-permissions-prompt-hide-doorhanger": ["WebGLPermissionPromptHelper"],
 diff --git a/browser/modules/WebGLPermissionPromptHelper.sys.mjs b/browser/modules/WebGLPermissionPromptHelper.sys.mjs
