@@ -20,10 +20,10 @@ diff --git a/browser/modules/ObserverForwarder.sys.mjs b/browser/modules/Observe
 index 8cf14355f3..bdecc6c230 100644
 --- a/browser/modules/ObserverForwarder.sys.mjs
 +++ b/browser/modules/ObserverForwarder.sys.mjs
-@@ -14,1 +14,3 @@
- ChromeUtils.defineESModuleGetters(lazy, {
+@@ -23,1 +23,3 @@
 +  WebGLPermissionPromptHelper:
 +    "moz-src:///browser/modules/WebGLPermissionPromptHelper.sys.mjs",
+ });
 @@ -28,3 +30,6 @@
  let gObservers = {
    "canvas-permissions-prompt": ["CanvasPermissionPromptHelper"],
