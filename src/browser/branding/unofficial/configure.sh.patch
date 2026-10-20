@@ -1,6 +1,11 @@
 diff --git a/browser/branding/unofficial/configure.sh b/browser/branding/unofficial/configure.sh
 --- a/browser/branding/unofficial/configure.sh
 +++ b/browser/branding/unofficial/configure.sh
-@@ -5 +5 @@
+@@ -1,6 +1,6 @@
+ # This Source Code Form is subject to the terms of the Mozilla Public
+ # License, v. 2.0. If a copy of the MPL was not distributed with this
+ # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ 
 -MOZ_APP_DISPLAYNAME=Nightly
 +MOZ_APP_DISPLAYNAME=LibreZen
+ MOZ_MACBUNDLE_ID=nightlyunofficial

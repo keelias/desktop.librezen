@@ -147,3 +147,8 @@ The first rebuild attempt after commit badfac93 failed for two reasons:
 Important: the attempted build failed in configure, and the subsequent `mach package` command ran anyway and reused the existing archive. The archive therefore still reported the old Zen name/vendor/source URL and is not validation of the new source.
 
 For the next attempt, fetch the latest branch and run `npm run import` as a separate command. Do not run build/package unless import exits successfully. Fish's interactive `or return` is not a reliable way to abort a pasted command sequence at the prompt; run stages separately, or place the entire sequence in a Fish script that exits nonzero on failure. Do not run `surfer reset` or `npm run download -- --force` to work around this; those can delete the generated source/object directory and expensive build cache.
+
+
+## Follow-up: first recovery import exposed contextless patch hunk failure
+
+After commit `99b5219`, `npm run import` progressed through the original about-dialog patch and then failed to apply `aboutDialog-z-brand-links.patch`. Its URL edits were insufficiently contextual and used brittle hunk positions. This update rewrites them using stable context, and likewise supplies context to the vendor and unofficial display-name patches. Re-run `npm run import` and stop on any failure; no successful build has run since the LibreZen identity edits.
