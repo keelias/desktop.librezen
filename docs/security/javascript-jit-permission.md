@@ -10,7 +10,7 @@ Status: implementation and patch-context checks are complete on the isolated fea
 - Settings > Permissions includes a JavaScript JIT entry that opens the site-exceptions manager; saved allow/block entries can be reviewed and removed there.
 - Process selection checks the effective top-level site for documents, subframes, and workers. This matters because JIT is selected when Gecko chooses a content-process type; toggling only a UI preference would not enforce the restriction.
 - The change respects an existing enterprise-policy denial. After changing a site's permission, the current site is reloaded so it is recreated in the correct JIT-enabled or JIT-disabled process.
-- The generated static-pref group is named `librezen`; new code should not introduce a new `librewolf.*` preference namespace.
+- The default is shipped as a normal preference, avoiding a second static-pref include that would break Gecko's alphabetical static-pref ordering. New code should not introduce a `librewolf.*` preference namespace.
 
 ## Validation required
 
