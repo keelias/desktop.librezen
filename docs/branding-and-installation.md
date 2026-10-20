@@ -14,7 +14,7 @@ _Last reviewed: 2026-10-20._
 | Archive layout | zen/ at the archive root | Confirmed by the lower-level Mozilla mach package output. |
 | XDG app directory component | librezen | The tracked nsXREDirProvider.cpp patch lowercases the configured app name before constructing the app-specific directory. This expected path behavior must be verified after rebuilding. |
 
-The build configuration now requests MOZ_APP_BASENAME=LibreZen, MOZ_APP_VENDOR=LibreZen, distribution ID org.librezen.browser, and this repository as MOZ_SOURCE_REPO. These are source settings only; they have **not yet been validated in a rebuilt archive**. The archive tested on 2026-10-20 still reported Name=Zen, Vendor=Mozilla, and Zen's source URL because it was built before the identity edit.
+The build configuration requests MOZ_APP_BASENAME=LibreZen, distribution ID org.librezen.browser, and this repository as MOZ_SOURCE_REPO. The browser/moz.configure patch changes Firefox's implied MOZ_APP_VENDOR value to LibreZen (it cannot be directly exported from mozconfig on this Firefox source revision); a separate reversible patch changes the unofficial branding display name from Nightly to LibreZen. These source changes have **not yet been validated in a successfully rebuilt archive**. The archive tested on 2026-10-20 still reported Name=Zen, Vendor=Mozilla, and Zen's source URL because it was built before the identity edit.
 
 The lowercase XDG paths to verify in a fresh test profile are:
 

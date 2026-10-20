@@ -1,12 +1,12 @@
 diff --git a/browser/base/content/aboutDialog.xhtml b/browser/base/content/aboutDialog.xhtml
 --- a/browser/base/content/aboutDialog.xhtml
 +++ b/browser/base/content/aboutDialog.xhtml
-@@ -120 +120 @@
+@@ -119 +119 @@
 -              <label is="text-link" href="https://zen-browser.app/about" data-l10n-name="community-exp-mozillaLink"/>
 +              <label is="text-link" href="https://github.com/keelias/desktop.librezen" data-l10n-name="community-exp-mozillaLink"/>
-@@ -126 +126 @@
+@@ -124 +124 @@
 -            <label is="text-link" href="https://github.com/zen-browser/desktop" data-l10n-name="community-mozillaLink"/>
 +            <label is="text-link" href="https://github.com/keelias/desktop.librezen" data-l10n-name="community-mozillaLink"/>
-@@ -140 +140 @@
+@@ -144 +144 @@
 -        <label is="text-link" class="bottom-link" href="https://www.zen-browser.app/privacy-policy/" data-l10n-id="bottom-links-privacy"/>
 +        <label is="text-link" class="bottom-link" href="https://github.com/keelias/desktop.librezen/blob/security/librewolf-hardening/docs/privacy-and-upstream-services.md" data-l10n-id="bottom-links-privacy"/>

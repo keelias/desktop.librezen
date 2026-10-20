@@ -136,3 +136,14 @@ The packaged browser launched in a temporary HOME/profile and did not touch Penn
 The identity pass changes the project metadata and build configuration to LibreZen, while deliberately retaining the internal zen binary name until inherited packaging integrations are migrated. The tracked XDG path patch lowercases the application name, so librezen is the expected directory component, pending confirmation from a rebuilt package. The install destinations are documented in docs/branding-and-installation.md; do not migrate profiles.
 
 The inherited release/AppImage/Flatpak automation still includes Zen-specific deployment assumptions. Do not use it to publish releases. Rebuild/repackage this revision and inspect application.ini before attempting any installation.
+
+
+## Recovery note after the first branding rebuild attempt (2026-10-20)
+
+The first rebuild attempt after commit badfac93 failed for two reasons:
+- `configs/common/mozconfig` exported `MOZ_APP_VENDOR=LibreZen`, which this Firefox configure system rejects because the value is supplied as an implied option. Commit `672402988eb52b382fff2fec3192e62d8a5bac8e` removes that export and adds `src/browser/moz.configure.patch` to change the implied vendor value at its source. It also adds a reversible patch for the unofficial brand's `MOZ_APP_DISPLAYNAME`.
+- The existing applied `aboutDialog-xhtml.patch` had been modified in place to change links. Surfer tries to reverse every tracked patch before reapplying it, so the modified patch no longer matched the already-patched file. The fix restores the original patch and moves the URL-only changes to `aboutDialog-z-brand-links.patch`.
+
+Important: the attempted build failed in configure, and the subsequent `mach package` command ran anyway and reused the existing archive. The archive therefore still reported the old Zen name/vendor/source URL and is not validation of the new source.
+
+For the next attempt, fetch the latest branch and run `npm run import` as a separate command. Do not run build/package unless import exits successfully. Fish's interactive `or return` is not a reliable way to abort a pasted command sequence at the prompt; run stages separately, or place the entire sequence in a Fish script that exits nonzero on failure. Do not run `surfer reset` or `npm run download -- --force` to work around this; those can delete the generated source/object directory and expensive build cache.
