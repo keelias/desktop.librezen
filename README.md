@@ -1,52 +1,42 @@
-<!--
-   - This Source Code Form is subject to the terms of the Mozilla Public
-   - License, v. 2.0. If a copy of the MPL was not distributed with this
-   - file, You can obtain one at http://mozilla.org/MPL/2.0/.
-   -->
-<!-- TODO: Get a job -->
-<img src="./docs/assets/zen-dark.svg" width="100px" align="left">
+# LibreZen
 
-### `Zen Browser`
+**LibreZen is an experimental browser project combining Zen Browser's interface with Firefox and selected LibreWolf-inspired privacy and security hardening.** It is an independent fork, not an official release of Zen Browser or LibreWolf.
 
-[![Downloads](https://img.shields.io/github/downloads/zen-browser/desktop/total.svg)](https://github.com/zen-browser/desktop/releases)
-[![Crowdin](https://badges.crowdin.net/zen-browser/localized.svg)](https://crowdin.com/project/zen-browser)
-[![Zen Release builds](https://github.com/zen-browser/desktop/actions/workflows/build.yml/badge.svg?branch=stable)](https://github.com/zen-browser/desktop/actions/workflows/build.yml)
+> [!WARNING]
+> LibreZen currently requires a source build. A tested end-user installer, package-manager package, and upgrade/uninstall workflow are not available yet. Do not treat the development build instructions below as installation instructions.
 
-Zen is a firefox-based browser with the aim of pushing your productivity to a new level!
+## Project status
 
-<div flex="true">
-  <a href="https://zen-browser.app/download">
-    Download
-  </a>
-  •
-  <a href="https://zen-browser.app">
-    Website
-  </a>
-  •
-  <a href="https://docs.zen-browser.app">
-    Documentation
-  </a>
-  •
-  <a href="https://zen-browser.app/release-notes/latest">
-    Release Notes
-  </a>
-</div>
+- **Base:** Zen Browser UI on Firefox.
+- **Security work:** selected LibreWolf patches are ported into LibreZen's versioned patch set.
+- **Verified feature:** the WebGL permission prompt has been built and manually tested, including both session-only and remembered site permissions.
+- **Build environment:** use the runtime versions pinned in .nvmrc, .python-version, and .rust-toolchain. The current tested setup uses Node.js 22, Python 3.11, and Rust 1.95.
+- **Installation:** packaging and LibreZen-specific application/profile identity are still being audited. See [Branding and installation plan](docs/branding-and-installation.md).
 
-### Firefox Versions
+## Build and run from source
 
-- [`Release`](https://zen-browser.app/download) - Is currently built using Firefox version `158.0`!
-- [`Twilight`](https://zen-browser.app/download?twilight) - Is currently built using Firefox version `RC 158.0`!
+These commands are for development, not a system installation. Run them from a clean checkout after installing the required system dependencies described by the upstream build documentation.
 
-### Contributing
+```sh
+npm ci
+npm run init
+npm run build
+npm start
+```
 
-If you'd like to report a bug, please do so on our [GitHub Issues page](https://github.com/zen-browser/desktop/issues/) and for feature requests, you can use [GitHub Discussions](https://github.com/zen-browser/desktop/discussions).
+The first initialization and build can take a long time and download/build a large toolchain. On Linux, use a supported distribution with the build dependencies required by Firefox/Zen. The repository's build scripts and configuration are still being adapted for LibreZen.
 
-Zen is an open-source project, and we welcome contributions from the community! Please take a look at the [contribution guidelines](./docs/contribute.md) before getting started!
+## Security documentation
 
-#### Partners
+- [WebGL permission prompt port and manual acceptance checklist](docs/security/webgl-permission.md)
+- [Branding, application identity, paths, and installation plan](docs/branding-and-installation.md)
 
-Thanks to all the partners of Zen for their support and contributions:
+## Upstream projects and attribution
 
-<a href="https://blacksmith.sh">
-  <img src="./docs/assets/blacksmith-yellow.png" width="350px"/>
-</a>
+LibreZen builds on the work of the [Zen Browser](https://github.com/zen-browser/desktop) and [Firefox](https://www.mozilla.org/firefox/) projects, and ports selected security changes from [LibreWolf](https://codeberg.org/librewolf). Their source code, assets, licenses, and notices remain subject to their respective upstream terms. See [LICENSE](LICENSE) and the notices distributed with the relevant source files.
+
+## Contributing
+
+Please keep changes reproducible: make persistent engine changes through the repository's source patches/configuration rather than editing the generated engine/ tree directly. For security-sensitive changes, document upstream provenance and provide a manual or automated acceptance test where practical.
+
+LibreZen is experimental. Security features and browser integration should be considered individually tested only when their stated tests have actually passed.
