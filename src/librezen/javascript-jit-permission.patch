@@ -159,11 +159,6 @@ diff --git a/browser/components/controlcenter/content/identityPanel.inc.xhtml b/
 diff --git a/dom/ipc/ProcessIsolation.cpp b/dom/ipc/ProcessIsolation.cpp
 --- a/dom/ipc/ProcessIsolation.cpp
 +++ b/dom/ipc/ProcessIsolation.cpp
-@@ -18,3 +18,4 @@
- #include "mozilla/StaticPrefs_browser.h"
- #include "mozilla/StaticPrefs_fission.h"
-+#include "mozilla/StaticPrefs_librezen.h"
- #include "mozilla/StaticPtr.h"
 @@ -160,6 +161,72 @@ bool AllowJITForSiteOrigin(nsIURI* aSiteOriginURI,
    return isJitAllowed;
  }
@@ -173,7 +168,7 @@ diff --git a/dom/ipc/ProcessIsolation.cpp b/dom/ipc/ProcessIsolation.cpp
 +static bool IsJITEnabledForSiteOrigin(nsIURI* aSiteOriginURI,
 +                                      WindowGlobalParent* aParentWindow,
 +                                      nsIPrincipal* aPrincipal) {
-+  const bool defaultEnabled = StaticPrefs::librezen_jit_enabled_by_default();
++  const bool defaultEnabled = Preferences::GetBool("librezen.jit.enabled-by-default", true);
 +  if (!aSiteOriginURI || !aPrincipal ||
 +      !aPrincipal->GetIsContentPrincipal()) {
 +    return defaultEnabled;
