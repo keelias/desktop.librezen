@@ -6,7 +6,7 @@
 
 # LibreZen Browser
 
-LibreZen is an experimental, independent community fork combining the workspace- and sidebar-oriented interface of [Zen Browser](https://zen-browser.app/) with the [Mozilla Firefox](https://www.mozilla.org/firefox/) engine and selected [LibreWolf](https://librewolf.net/) privacy and security changes.
+LibreZen is an experimental, independent community browser project under the Volcan umbrella. It combines the workspace- and sidebar-oriented interface of [Zen Browser](https://zen-browser.app/) with the [Mozilla Firefox](https://www.mozilla.org/firefox/) engine and selected [LibreWolf](https://librewolf.net/) privacy and security changes. Volcan is the project umbrella; LibreZen remains the product name.
 
 LibreZen is **not** an official release of, or affiliated with, Mozilla, Zen Browser, or LibreWolf. The project is early-stage: a successful source build and package smoke test do not yet mean every privacy feature, updater, or release installer is ready for general use.
 
