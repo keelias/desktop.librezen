@@ -49,7 +49,19 @@ The inherited AppImage and Flatpak workflows are **not release-ready**. They sti
 
 Already completed on 2026-10-20: `npm run import` succeeded and applied the tracked patch set; the full `npm run build` succeeded; `cd engine && python3 ./mach package` produced a Linux archive; its `application.ini` reported `Name=LibreZen`, `Vendor=LibreZen`, and this project's source repository; and the browser launched from an isolated temporary HOME/profile. The WebGL permission flow was also tested and confirmed working. Do not repeat the full build unless source changes require it.
 
-The remaining user-assisted runtime check is filesystem isolation. Extract the latest archive to a temporary directory and run it with a fresh temporary HOME plus distinct XDG config/cache/data/state directories. Then check `about:support` for the Profile Directory and inspect which of those temporary directories actually gained LibreZen files. Record paths separately for profile data, XDG config, cache, persistent data, and state; do not infer all five from `MOZ_APP_BASENAME` alone. Relaunch with the same temporary profile to ensure startup still works. Do not move, delete, or reuse any normal Zen Browser or LibreWolf profile.
+The remaining user-assisted runtime check is filesystem isolation. Use a fresh temporary HOME and separate XDG directories, and **do not pass `--profile`**; doing so would bypass the default-profile location being tested. If the already extracted archive is still present, a Fish-shell example is:
+
+    set -l package_root "$HOME/.cache/librezen-smoke.sBf3RU/opt/zen"
+    set -l audit_root (mktemp -d "$HOME/.cache/librezen-xdg-audit.XXXXXX")
+    mkdir -p "$audit_root/home" "$audit_root/config" "$audit_root/cache" "$audit_root/data" "$audit_root/state"
+    env HOME="$audit_root/home" \\
+        XDG_CONFIG_HOME="$audit_root/config" \\
+        XDG_CACHE_HOME="$audit_root/cache" \\
+        XDG_DATA_HOME="$audit_root/data" \\
+        XDG_STATE_HOME="$audit_root/state" \\
+        "$package_root/zen" --no-remote
+
+While it is open, visit `about:support` and record the Profile Directory. Quit the browser normally, then inspect the temporary root with `find "$audit_root" -mindepth 1 -maxdepth 5 -print | sort`. Record profile data separately from XDG config, cache, persistent data, and state; do not infer all paths from `MOZ_APP_BASENAME` alone. Keep the temporary root until the results are reviewed. Relaunching the same package with the same isolated environment is useful for a second-startup check. Do not move, delete, or reuse any normal Zen Browser or LibreWolf profile.
 
 The release-oriented npm run package command uses Surfer to create MAR/update files in addition to the browser archive. Its release channel must be explicitly configured; generating update metadata does not mean a working LibreZen update server or published GitHub release exists.
 
