@@ -20,15 +20,10 @@ diff --git a/browser/modules/ObserverForwarder.sys.mjs b/browser/modules/Observe
 index 8cf14355f3..bdecc6c230 100644
 --- a/browser/modules/ObserverForwarder.sys.mjs
 +++ b/browser/modules/ObserverForwarder.sys.mjs
-@@ -14,6 +14,8 @@ let lazy = {};
+@@ -14,1 +14,3 @@ let lazy = {};
  ChromeUtils.defineESModuleGetters(lazy, {
-   CanvasPermissionPromptHelper:
-     "moz-src:///browser/modules/CanvasPermissionPromptHelper.sys.mjs",
 +  WebGLPermissionPromptHelper:
 +    "moz-src:///browser/modules/WebGLPermissionPromptHelper.sys.mjs",
-   FilePickerCrashed: "resource:///modules/FilePickerCrashed.sys.mjs",
-   PluginManager: "resource:///actors/PluginParent.sys.mjs",
-   UnexpectedScriptObserver:
 @@ -28,6 +30,9 @@ ChromeUtils.defineESModuleGetters(lazy, {
  let gObservers = {
    "canvas-permissions-prompt": ["CanvasPermissionPromptHelper"],
@@ -811,11 +806,9 @@ diff --git a/browser/locales/en-US/chrome/browser/browser.properties b/browser/l
 diff --git a/browser/locales/en-US/chrome/browser/sitePermissions.properties b/browser/locales/en-US/chrome/browser/sitePermissions.properties
 --- a/browser/locales/en-US/chrome/browser/sitePermissions.properties
 +++ b/browser/locales/en-US/chrome/browser/sitePermissions.properties
-@@ -49,3 +49,4 @@
- permission.persistent-storage.label = Store data in persistent storage
+@@ -50,1 +50,2 @@
  permission.canvas.label = Extract canvas data
 +permission.webgl.label = Create WebGL context
- permission.midi.label = Access MIDI devices
 diff --git a/browser/locales/en-US/browser/browser.ftl b/browser/locales/en-US/browser/browser.ftl
 --- a/browser/locales/en-US/browser/browser.ftl
 +++ b/browser/locales/en-US/browser/browser.ftl
@@ -836,13 +829,11 @@ diff --git a/browser/locales/en-US/browser/browser.ftl b/browser/locales/en-US/b
 diff --git a/browser/locales/en-US/browser/preferences/preferences.ftl b/browser/locales/en-US/browser/preferences/preferences.ftl
 --- a/browser/locales/en-US/browser/preferences/preferences.ftl
 +++ b/browser/locales/en-US/browser/preferences/preferences.ftl
-@@ -1420,3 +1420,6 @@
+@@ -1420,1 +1420,4 @@
  permissions-header = Permissions
- 
++
 +permissions-webgl2 =
 +    .label = WebGL
-+
- permissions-location = Location
 diff --git a/browser/locales/en-US/browser/preferences/permissions.ftl b/browser/locales/en-US/browser/preferences/permissions.ftl
 --- a/browser/locales/en-US/browser/preferences/permissions.ftl
 +++ b/browser/locales/en-US/browser/preferences/permissions.ftl
