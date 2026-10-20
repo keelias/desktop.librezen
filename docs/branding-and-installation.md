@@ -16,14 +16,12 @@ _Last reviewed: 2026-10-20._
 
 The build configuration requests MOZ_APP_BASENAME=LibreZen, distribution ID org.librezen.browser, and this repository as MOZ_SOURCE_REPO. The browser/moz.configure patch changes Firefox's implied MOZ_APP_VENDOR value to LibreZen (it cannot be directly exported from mozconfig on this Firefox source revision); a separate reversible patch changes the unofficial branding display name from Nightly to LibreZen. **Validation completed on 2026-10-20:** the latest rebuild succeeded, the newly packaged application's application.ini reported Name=LibreZen, Vendor=LibreZen, and SourceRepository=https://github.com/keelias/desktop.librezen, and the packaged browser launched from an isolated temporary profile. Some remaining Nightly strings may still appear in cosmetic UI surfaces.
 
-The tracked path patch lowercases the configured application name. These are the intended lowercase XDG paths, but the actual paths created by the rebuilt browser **have not yet been verified**:
+The tracked path patch lowercases the configured application name and changes the Linux XDG config-home lookup; Firefox's existing local/cache path uses XDG cache-home. These are the two **source-backed paths to verify** in a fresh temporary environment:
 
 - $XDG_CONFIG_HOME/librezen (normally ~/.config/librezen)
 - $XDG_CACHE_HOME/librezen (normally ~/.cache/librezen)
-- $XDG_DATA_HOME/librezen (normally ~/.local/share/librezen)
-- $XDG_STATE_HOME/librezen (normally ~/.local/state/librezen)
 
-These are expectations based on the tracked path patch, not a guarantee that every Firefox/Zen profile component uses all four paths. Verify them with a newly rebuilt browser and about:support / a temporary XDG environment before treating them as final. Do not move, delete, or reuse any existing Zen Browser or LibreWolf profile.
+The current tracked patch does not directly establish an $XDG_DATA_HOME/librezen or $XDG_STATE_HOME/librezen directory. Include separate temporary data/state directories in the audit to detect any writes from other components, but do not document them as expected paths unless runtime evidence confirms them. Profile data is a separate question: record the actual Profile Directory shown by about:support and inspect where the profile manager created it. Do not move, delete, or reuse any existing Zen Browser or LibreWolf profile.
 
 ## Linux archive and install locations
 
@@ -51,6 +49,7 @@ Already completed on 2026-10-20: `npm run import` succeeded and applied the trac
 
 The remaining user-assisted runtime check is filesystem isolation. Use a fresh temporary HOME and separate XDG directories, and **do not pass `--profile`**; doing so would bypass the default-profile location being tested. If the already extracted archive is still present, a Fish-shell example is:
 
+    # Replace this with the current directory containing the extracted test archive.
     set -l package_root "$HOME/.cache/librezen-smoke.sBf3RU/opt/zen"
     set -l audit_root (mktemp -d "$HOME/.cache/librezen-xdg-audit.XXXXXX")
     mkdir -p "$audit_root/home" "$audit_root/config" "$audit_root/cache" "$audit_root/data" "$audit_root/state"
