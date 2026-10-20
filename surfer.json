@@ -1,7 +1,7 @@
 {
-  "name": "Zen Browser",
-  "vendor": "Zen OSS Team",
-  "appId": "zen",
+  "name": "LibreZen Browser",
+  "vendor": "LibreZen Project",
+  "appId": "org.librezen.browser",
   "binaryName": "zen",
   "version": {
     "product": "firefox",
@@ -16,13 +16,13 @@
   "brands": {
     "release": {
       "backgroundColor": "#282A33",
-      "brandShorterName": "Zen",
-      "brandShortName": "Zen",
-      "brandFullName": "Zen Browser",
+      "brandShorterName": "LibreZen",
+      "brandShortName": "LibreZen",
+      "brandFullName": "LibreZen Browser",
       "release": {
-        "displayVersion": "1.23.3b",
+        "displayVersion": "1.0.0",
         "github": {
-          "repo": "zen-browser/desktop"
+          "repo": "keelias/desktop.librezen"
         },
         "archives": {
           "windows": "windows.mar",
@@ -36,13 +36,13 @@
     },
     "twilight": {
       "backgroundColor": "#282A33",
-      "brandShorterName": "Zen",
-      "brandShortName": "Twilight",
-      "brandFullName": "Zen Twilight",
+      "brandShorterName": "LibreZen",
+      "brandShortName": "Preview",
+      "brandFullName": "LibreZen Preview",
       "release": {
-        "displayVersion": "1.24t",
+        "displayVersion": "1.0.0-preview.1",
         "github": {
-          "repo": "zen-browser/desktop"
+          "repo": "keelias/desktop.librezen"
         }
       }
     }
@@ -52,6 +52,5 @@
       ".*\\.json"
     ],
     "licenseType": "MPL-2.0"
-  },
-  "updateHostname": "updates.zen-browser.app"
+  }
 }
