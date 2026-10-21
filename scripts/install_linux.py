@@ -352,17 +352,42 @@ def render_desktop(launcher: Path) -> bytes:
     if not DESKTOP_TEMPLATE.is_file():
         raise InstallError(f"Desktop-entry template is missing: {DESKTOP_TEMPLATE}")
     lines = DESKTOP_TEMPLATE.read_text(encoding="utf-8").splitlines()
-    exec_lines = [i for i, line in enumerate(lines) if line.startswith("Exec=")]
-    tryexec_lines = [i for i, line in enumerate(lines) if line.startswith("TryExec=")]
-    if len(exec_lines) != 1:
-        raise InstallError("Desktop-entry template must contain exactly one Exec= line")
-    lines[exec_lines[0]] = f"Exec={desktop_quote(str(launcher))} %U"
+
+    # Track entries by desktop-file section. Actions have their own Exec= lines,
+    # and each must be rewritten to the scope-specific absolute LibreZen launcher.
+    current_section = ""
+    exec_lines: dict[str, list[int]] = {}
+    tryexec_lines: list[int] = []
+    for index, line in enumerate(lines):
+        if line.startswith("[") and line.endswith("]"):
+            current_section = line[1:-1]
+        if line.startswith("Exec="):
+            exec_lines.setdefault(current_section, []).append(index)
+        if current_section == "Desktop Entry" and line.startswith("TryExec="):
+            tryexec_lines.append(index)
+
+    command = desktop_quote(str(launcher))
+    replacements = {
+        "Desktop Entry": f"{command} %U",
+        "Desktop Action new-private-window": f"{command} --private-window %u",
+        "Desktop Action new-window": f"{command} %u",
+        "Desktop Action profilemanager": f"{command} --ProfileManager %u",
+    }
+    for section, value in replacements.items():
+        indices = exec_lines.get(section, [])
+        if len(indices) != 1:
+            raise InstallError(
+                f"Desktop-entry template must contain exactly one Exec= line in [{section}]"
+            )
+        lines[indices[0]] = f"Exec={value}"
+
     if len(tryexec_lines) > 1:
         raise InstallError("Desktop-entry template contains more than one TryExec= line")
     if tryexec_lines:
-        lines[tryexec_lines[0]] = f"TryExec={desktop_quote(str(launcher))}"
+        lines[tryexec_lines[0]] = f"TryExec={command}"
     else:
-        lines.insert(exec_lines[0] + 1, f"TryExec={desktop_quote(str(launcher))}")
+        entry_exec_index = exec_lines["Desktop Entry"][0]
+        lines.insert(entry_exec_index + 1, f"TryExec={command}")
     return ("\n".join(lines) + "\n").encode("utf-8")
 
 
