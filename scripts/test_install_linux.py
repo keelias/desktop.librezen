@@ -113,7 +113,16 @@ class InstallerTests(unittest.TestCase):
                 self.assertTrue((home / ".local/opt/librezen/zen").is_file())
                 self.assertTrue((home / ".local/bin/librezen").is_file())
                 desktop = data_home / "applications/librezen.desktop"
-                self.assertIn(f'Exec="{home}/.local/bin/librezen" %U', desktop.read_text())
+                desktop_text = desktop.read_text(encoding="utf-8")
+                self.assertIn(f'Exec="{home}/.local/bin/librezen" %U', desktop_text)
+                self.assertIn(
+                    f'Exec="{home}/.local/bin/librezen" --private-window %u',
+                    desktop_text,
+                )
+                self.assertIn(
+                    f'Exec="{home}/.local/bin/librezen" --ProfileManager %u',
+                    desktop_text,
+                )
                 self.assertTrue((data_home / "icons/hicolor/128x128/apps/librezen.png").is_file())
 
                 install_linux.uninstall("user")
@@ -123,6 +132,31 @@ class InstallerTests(unittest.TestCase):
             self.assertFalse((data_home / "applications/librezen.desktop").exists())
             self.assertFalse((data_home / "icons/hicolor/128x128/apps/librezen.png").exists())
             self.assertEqual(profile_data.read_text(encoding="utf-8"), "profile data must survive")
+
+    def test_render_desktop_rewrites_all_launcher_commands(self):
+        launcher = Path("/tmp/LibreZen Test/bin/librezen")
+        rendered = install_linux.render_desktop(launcher).decode("utf-8")
+        command = install_linux.desktop_quote(str(launcher))
+
+        self.assertIn("Name=LibreZen\n", rendered)
+        self.assertIn("Comment=Browse the World Wide Web with tranquility!\n", rendered)
+        self.assertIn("Actions=new-private-window;new-window;profilemanager;", rendered)
+        self.assertIn(f"Exec={command} %U", rendered)
+        self.assertIn(
+            f"[Desktop Action new-private-window]\nName=Open a New Private Window\n"
+            f"Exec={command} --private-window %u",
+            rendered,
+        )
+        self.assertIn(
+            f"[Desktop Action new-window]\nName=Open a New Window\nExec={command} %u",
+            rendered,
+        )
+        self.assertIn(
+            f"[Desktop Action profilemanager]\nName=Open the Profile Manager\n"
+            f"Exec={command} --ProfileManager %u",
+            rendered,
+        )
+        self.assertIn(f"TryExec={command}", rendered)
 
     def test_refuses_to_overwrite_existing_launcher(self):
         with tempfile.TemporaryDirectory() as temporary:
