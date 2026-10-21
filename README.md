@@ -46,7 +46,7 @@ Then install user-wide (no `sudo`):
 
     python3 scripts/install_linux.py --user engine/obj-x86_64-pc-linux-gnu/dist/zen-1.0.0.en-US.linux-x86_64.tar.xz
 
-The installer validates the archive, then installs browser files to `~/.local/opt/librezen/`, a launcher to `~/.local/bin/librezen`, and a desktop entry and icon under `$XDG_DATA_HOME` (normally `~/.local/share/`). The launcher is available as `~/.local/bin/librezen` even when that directory is not on the shell's `PATH`. The first install against the actual generated archive still needs a manual end-to-end smoke test.
+The installer validates the archive, then installs browser files to `~/.local/opt/librezen/`, a launcher to `~/.local/bin/librezen`, and a desktop entry and icon under `$XDG_DATA_HOME` (normally `~/.local/share/`). The desktop entry uses the name `LibreZen`, the comment `Browse the World Wide Web with tranquility!`, and actions for opening a private window, a new window, and the Profile Manager. The launcher is available as `~/.local/bin/librezen` even when that directory is not on the shell's `PATH`. On 2026-10-21, actual-archive user-wide and system-wide install/launch/uninstall tests passed on CachyOS, and profile preservation was verified. The desktop-action additions still need to be pulled locally, tested, and checked from KDE's menu before their behavior is considered verified.
 
 For system-wide installation, after the user install and launch have been verified:
 
