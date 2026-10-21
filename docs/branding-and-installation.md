@@ -58,6 +58,12 @@ System-wide, with administrator privileges:
 sudo python3 scripts/install_linux.py --system engine/obj-x86_64-pc-linux-gnu/dist/zen-1.0.0.en-US.linux-x86_64.tar.xz
 ```
 
+Before installing, run the archive-safety and profile-preservation tests from the repository root:
+
+```sh
+python3 -m unittest scripts.test_install_linux -v
+```
+
 Uninstall the matching installation:
 
 ```sh
