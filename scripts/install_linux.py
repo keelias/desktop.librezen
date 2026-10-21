@@ -176,6 +176,9 @@ def validate_members(infos: list[tarfile.TarInfo]) -> dict[tuple[str, ...], tarf
             if parent in members and not members[parent].isdir():
                 raise InstallError(f"Archive path is nested beneath a non-directory: {key!r}")
 
+    if (MARKER_NAME,) in members:
+        raise InstallError(f"Archive contains reserved installer metadata path: {MARKER_NAME}")
+
     for key, info in members.items():
         if info.issym():
             _symlink_target_key(key[:-1], info.linkname)
@@ -393,6 +396,8 @@ def _read_marker(app_dir: Path, scope: str) -> dict[str, Any]:
             f"{app_dir} has no valid LibreZen installer marker; it was left untouched"
         ) from exc
 
+    if not isinstance(marker, dict) or marker.get("schema_version") != 1:
+        raise InstallError(f"{app_dir} has an unsupported or invalid LibreZen install marker")
     if marker.get("app_id") != APP_ID or marker.get("scope") != scope:
         raise InstallError(f"{app_dir} is not a recognized {scope}-wide LibreZen installation")
     if marker.get("app_dir") != str(app_dir):
@@ -424,9 +429,12 @@ def _validate_marker_paths(marker: dict[str, Any], paths: InstallPaths) -> dict[
         raise InstallError("Install marker has an invalid desktop-entry location")
     if paths.scope == "system" and data_home != Path("/usr/local/share"):
         raise InstallError("System install marker points outside /usr/local/share")
-    width = marker.get("icon_size", {}).get("width")
-    height = marker.get("icon_size", {}).get("height")
-    if not isinstance(width, int) or not isinstance(height, int):
+    icon_size = marker.get("icon_size")
+    if not isinstance(icon_size, dict):
+        raise InstallError("Install marker has invalid icon dimensions")
+    width = icon_size.get("width")
+    height = icon_size.get("height")
+    if not isinstance(width, int) or not isinstance(height, int) or not (1 <= width <= 1024 and 1 <= height <= 1024):
         raise InstallError("Install marker has invalid icon dimensions")
     expected_icon = data_home / "icons" / "hicolor" / f"{width}x{height}" / "apps" / "librezen.png"
     if icon != expected_icon:
@@ -495,26 +503,15 @@ def install_archive(archive_path: Path, scope: str) -> None:
         marker_path.write_text(json.dumps(marker, indent=2) + "\n", encoding="utf-8")
         marker_path.chmod(0o644)
 
-        staged_launcher = stage_root / "librezen-launcher"
-        staged_launcher.write_bytes(launcher_data)
-        staged_launcher.chmod(0o755)
-        staged_desktop = stage_root / "librezen.desktop"
-        staged_desktop.write_bytes(desktop_data)
-        staged_desktop.chmod(0o644)
-        staged_icon = stage_root / "librezen.png"
-        staged_icon.write_bytes(icon_data)
-        staged_icon.chmod(0o644)
-
         os.rename(staged_app, paths.app_dir)
         installed_app = True
-        for staged, destination, checksum in (
-            (staged_launcher, paths.launcher, digest(launcher_data)),
-            (staged_desktop, paths.desktop, digest(desktop_data)),
-            (staged_icon, paths.icon, digest(icon_data)),
+        for destination, data, mode in (
+            (paths.launcher, launcher_data, 0o755),
+            (paths.desktop, desktop_data, 0o644),
+            (paths.icon, icon_data, 0o644),
         ):
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            os.link(staged, destination)
-            installed_files.append((destination, checksum))
+            exclusive_write(destination, data, mode)
+            installed_files.append((destination, digest(data)))
 
         print(f"Installed LibreZen {plan.version} ({scope}-wide).")
         print(f"  Browser: {paths.app_dir}")
@@ -551,9 +548,12 @@ def uninstall(scope: str) -> None:
 
     marker = _read_marker(app_dir, scope)
     version = marker.get("version", "unknown")
-    width = marker.get("icon_size", {}).get("width")
-    height = marker.get("icon_size", {}).get("height")
-    if not isinstance(width, int) or not isinstance(height, int):
+    icon_size = marker.get("icon_size")
+    if not isinstance(icon_size, dict):
+        raise InstallError("Install marker has invalid icon dimensions")
+    width = icon_size.get("width")
+    height = icon_size.get("height")
+    if not isinstance(width, int) or not isinstance(height, int) or not (1 <= width <= 1024 and 1 <= height <= 1024):
         raise InstallError("Install marker has invalid icon dimensions")
     base_paths = paths_for(scope, (width, height))
     files = _validate_marker_paths(marker, base_paths)
@@ -612,6 +612,6 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except InstallError as exc:
+    except (InstallError, OSError) as exc:
         print(f"LibreZen installer: {exc}", file=sys.stderr)
         raise SystemExit(1)
