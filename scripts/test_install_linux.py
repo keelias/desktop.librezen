@@ -77,23 +77,21 @@ class InstallerTests(unittest.TestCase):
                 install_linux.inspect_archive(archive_path)
 
     def test_rejects_path_traversal(self):
+        root = tarfile.TarInfo("zen/")
+        root.type = tarfile.DIRTYPE
         info = tarfile.TarInfo("zen/../../outside")
         info.size = 0
         with self.assertRaises(install_linux.InstallError):
-            install_linux.validate_members([
-                tarfile.TarInfo("zen/"),
-                info,
-            ])
+            install_linux.validate_members([root, info])
 
     def test_rejects_symlink_that_escapes_bundle(self):
+        root = tarfile.TarInfo("zen/")
+        root.type = tarfile.DIRTYPE
         info = tarfile.TarInfo("zen/browser/escape")
         info.type = tarfile.SYMTYPE
         info.linkname = "../../../../outside"
         with self.assertRaises(install_linux.InstallError):
-            install_linux.validate_members([
-                tarfile.TarInfo("zen/"),
-                info,
-            ])
+            install_linux.validate_members([root, info])
 
     def test_install_and_uninstall_preserve_profile_data(self):
         with tempfile.TemporaryDirectory() as temporary:
