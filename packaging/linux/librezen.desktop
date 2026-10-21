@@ -5,6 +5,7 @@ Name=LibreZen Browser
 GenericName=Web Browser
 Comment=LibreZen Browser — a Volcan project
 Exec=librezen %U
+TryExec=librezen
 Icon=librezen
 Terminal=false
 StartupNotify=true
