@@ -1,9 +1,9 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=LibreZen Browser
+Name=LibreZen
 GenericName=Web Browser
-Comment=LibreZen Browser — a Volcan project
+Comment=Browse the World Wide Web with tranquility!
 Exec=librezen %U
 TryExec=librezen
 Icon=librezen
@@ -12,4 +12,17 @@ StartupNotify=true
 Categories=Network;WebBrowser;
 MimeType=text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;
 Keywords=Web;Browser;Internet;LibreZen;
+Actions=new-private-window;new-window;profilemanager;
 X-LibreZen-Managed=true
+
+[Desktop Action new-private-window]
+Name=Open a New Private Window
+Exec=librezen --private-window %u
+
+[Desktop Action new-window]
+Name=Open a New Window
+Exec=librezen %u
+
+[Desktop Action profilemanager]
+Name=Open the Profile Manager
+Exec=librezen --ProfileManager %u
