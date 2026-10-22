@@ -16,7 +16,7 @@ LibreZen is **not** an official release of, or affiliated with, Mozilla, Zen Bro
 
 - The Firefox source revision is pinned in surfer.json; changes to upstream dependencies are imported through Surfer.
 - A Linux x86-64 archive was rebuilt and packaged on 2026-10-21. Both packaged manifests report `Vendor=Volcan`, `Name=LibreZen`, `Version=1.0.0`, and `Profile=librezen`; an `about:support` smoke test confirmed runtime profile isolation under a temporary HOME/XDG config directory.
-- There is not yet a published LibreZen release or a configured LibreZen update service.
+- The built-in Gecko updater is disabled by default. Update-host metadata now points away from Zen, and the intended GitHub Releases manifest URL is reserved, but no LibreZen release or signed MAR/XML update feed has been published; updates remain manual until the release pipeline is implemented and tested.
 - The inherited AppImage/Flatpak release automation still contains Zen-specific deployment assumptions and must not be used to publish LibreZen releases.
 
 ## Build from source
