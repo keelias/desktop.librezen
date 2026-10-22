@@ -6,7 +6,7 @@
 
 # LibreZen Browser
 
-LibreZen is an experimental, independent community fork combining the workspace- and sidebar-oriented interface of [Zen Browser](https://zen-browser.app/) with the [Mozilla Firefox](https://www.mozilla.org/firefox/) engine and selected [LibreWolf](https://librewolf.net/) privacy and security changes.
+LibreZen is an experimental, independent community browser project under the Volcan umbrella. It combines the workspace- and sidebar-oriented interface of [Zen Browser](https://zen-browser.app/) with the [Mozilla Firefox](https://www.mozilla.org/firefox/) engine and selected [LibreWolf](https://librewolf.net/) privacy and security changes. Volcan is the project umbrella; LibreZen remains the product name.
 
 LibreZen is **not** an official release of, or affiliated with, Mozilla, Zen Browser, or LibreWolf. The project is early-stage: a successful source build and package smoke test do not yet mean every privacy feature, updater, or release installer is ready for general use.
 
@@ -15,7 +15,7 @@ LibreZen is **not** an official release of, or affiliated with, Mozilla, Zen Bro
 ## Project status
 
 - The Firefox source revision is pinned in surfer.json; changes to upstream dependencies are imported through Surfer.
-- A Linux x86-64 archive was successfully generated with Mozilla's mach package target and launched in a temporary HOME/profile on 2026-10-20. That package predates the current LibreZen identity edits, so rebuild and verify before installing it.
+- A Linux x86-64 archive was rebuilt and packaged on 2026-10-21. Both packaged manifests report `Vendor=Volcan`, `Name=LibreZen`, `Version=1.0.0`, and `Profile=librezen`; an `about:support` smoke test confirmed runtime profile isolation under a temporary HOME/XDG config directory.
 - There is not yet a published LibreZen release or a configured LibreZen update service.
 - The inherited AppImage/Flatpak release automation still contains Zen-specific deployment assumptions and must not be used to publish LibreZen releases.
 
@@ -34,7 +34,29 @@ To create the lower-level Linux browser archive after a successful build:
     cd engine
     python3 ./mach package
 
-The archive is written below engine/obj-*/dist/. It is a compressed application bundle, not a native Arch package. The planned install script is not yet available; use the isolated smoke-test process in the installation notes rather than launching an unverified build against an existing browser profile.
+The archive is written below `engine/obj-*/dist/`. It is a compressed application bundle, not a native Arch package. A manual archive installer is available at `scripts/install_linux.py`; run its safety/profile-preservation tests and use the local, freshly built archive for the first install.
+
+## Install a locally built Linux archive
+
+From the repository root, after running `npm run build` and `cd engine && python3 ./mach package`, run the installer tests:
+
+    python3 -m unittest scripts.test_install_linux -v
+
+Then install user-wide (no `sudo`):
+
+    python3 scripts/install_linux.py --user engine/obj-x86_64-pc-linux-gnu/dist/zen-1.0.0.en-US.linux-x86_64.tar.xz
+
+The installer validates the archive, then installs browser files to `~/.local/opt/librezen/`, a launcher to `~/.local/bin/librezen`, and a desktop entry and icon under `$XDG_DATA_HOME` (normally `~/.local/share/`). The desktop entry uses the name `LibreZen`, the comment `Browse the World Wide Web with tranquility!`, and actions for opening a private window, a new window, and the Profile Manager. The launcher is available as `~/.local/bin/librezen` even when that directory is not on the shell's `PATH`. On 2026-10-21, actual-archive user-wide and system-wide install/launch/uninstall tests passed on CachyOS, and profile preservation was verified. The desktop-action additions still need to be pulled locally, tested, and checked from KDE's menu before their behavior is considered verified.
+
+For system-wide installation, after the user install and launch have been verified:
+
+    sudo python3 scripts/install_linux.py --system engine/obj-x86_64-pc-linux-gnu/dist/zen-1.0.0.en-US.linux-x86_64.tar.xz
+
+To remove an installer-managed user installation without touching browser profiles:
+
+    python3 scripts/install_linux.py --user --uninstall
+
+This is a manual archive install, not an Arch package, AppImage, Flatpak, signed release, or configured updater. The inherited AppImage/Flatpak release workflows are not release-ready.
 
 ## Development principles
 

@@ -1,7 +1,7 @@
 {
   "name": "LibreZen Browser",
-  "vendor": "LibreZen Project",
-  "appId": "org.librezen.browser",
+  "vendor": "Volcan",
+  "appId": "systems.volcan.librezen",
   "binaryName": "zen",
   "version": {
     "product": "firefox",
