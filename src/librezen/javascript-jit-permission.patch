@@ -1,0 +1,375 @@
+diff --git a/browser/base/content/browser-siteIdentity.js b/browser/base/content/browser-siteIdentity.js
+--- a/browser/base/content/browser-siteIdentity.js
++++ b/browser/base/content/browser-siteIdentity.js
+@@ -7,6 +7,9 @@ ChromeUtils.defineESModuleGetters(this, {
+   QWACs: "resource://gre/modules/psm/QWACs.sys.mjs",
+ });
+ 
++const LIBREZEN_JIT_PERMISSION = "jit";
++const LIBREZEN_JIT_DEFAULT_PREF = "librezen.jit.enabled-by-default";
++
+ /**
+  * Utility object to handle manipulations of the identity indicators in the UI
+  */
+@@ -237,6 +240,9 @@ var gIdentityHandler = {
+       "identity-popup-more-info": event => {
+         this.handleMoreInfoClick(event);
+       },
++      "identity-popup-enable-jit-button": () => {
++        this.toggleJITPermission();
++      },
+     };
+ 
+     for (let [id, handler] of Object.entries(COMMANDS)) {
+@@ -436,6 +442,18 @@ var gIdentityHandler = {
+     return this._schemelessHttpsFirstModeEnabled;
+   },
+ 
++  get _jitEnabledByDefault() {
++    delete this._jitEnabledByDefault;
++    XPCOMUtils.defineLazyPreferenceGetter(
++      this,
++      "_jitEnabledByDefault",
++      LIBREZEN_JIT_DEFAULT_PREF,
++      true,
++      () => this.refreshJITPermissionToggle()
++    );
++    return this._jitEnabledByDefault;
++  },
++
+   _isHttpsOnlyModeActive(isWindowPrivate) {
+     return (
+       this._httpsOnlyModeEnabled ||
+@@ -1333,5 +1351,6 @@ var gIdentityHandler = {
+       PopupNotifications.suppressWhileOpen(this._identityPopup);
+       window.addEventListener("focus", this, true);
++      this.refreshJITPermissionToggle();
+     }
+   },
+ 
+@@ -1454,4 +1473,89 @@ var gIdentityHandler = {
+       elem.removeAttribute(attr);
+     }
+   },
++
++  refreshJITPermissionToggle() {
++    const toggle = document.getElementById("identity-popup-enable-jit-toggle");
++    const principal = gBrowser.contentPrincipal;
++
++    if (!toggle || !principal || !principal.isContentPrincipal) {
++      return;
++    }
++
++    let siteURI;
++    try {
++      siteURI = Services.io.newURI(principal.siteOriginNoSuffix);
++    } catch (error) {
++      toggle.removeAttribute("pressed");
++      return;
++    }
++
++    const sitePrincipal = Services.scriptSecurityManager.createContentPrincipal(
++      siteURI,
++      principal.originAttributes
++    );
++    const savedPermission = Services.perms.testExactPermissionFromPrincipal(
++      sitePrincipal,
++      LIBREZEN_JIT_PERMISSION
++    );
++
++    let enabled = this._jitEnabledByDefault;
++    if (savedPermission === Services.perms.ALLOW_ACTION) {
++      enabled = true;
++    } else if (savedPermission === Services.perms.DENY_ACTION) {
++      enabled = false;
++    }
++
++    toggle.toggleAttribute("pressed", enabled);
++  },
++
++  toggleJITPermission() {
++    const principal = gBrowser.contentPrincipal;
++    if (!principal || !principal.isContentPrincipal) {
++      return;
++    }
++
++    let siteURI;
++    try {
++      siteURI = Services.io.newURI(principal.siteOriginNoSuffix);
++    } catch (error) {
++      return;
++    }
++
++    const sitePrincipal = Services.scriptSecurityManager.createContentPrincipal(
++      siteURI,
++      principal.originAttributes
++    );
++    const defaultEnabled = this._jitEnabledByDefault;
++    const savedPermission = Services.perms.testExactPermissionFromPrincipal(
++      sitePrincipal,
++      LIBREZEN_JIT_PERMISSION
++    );
++
++    let currentlyEnabled = defaultEnabled;
++    if (savedPermission === Services.perms.ALLOW_ACTION) {
++      currentlyEnabled = true;
++    } else if (savedPermission === Services.perms.DENY_ACTION) {
++      currentlyEnabled = false;
++    }
++
++    const enabled = !currentlyEnabled;
++    if (enabled === defaultEnabled) {
++      Services.perms.removeFromPrincipal(
++        sitePrincipal,
++        LIBREZEN_JIT_PERMISSION
++      );
++    } else {
++      Services.perms.addFromPrincipal(
++        sitePrincipal,
++        LIBREZEN_JIT_PERMISSION,
++        enabled ? Services.perms.ALLOW_ACTION : Services.perms.DENY_ACTION,
++        Services.perms.EXPIRE_NEVER
++      );
++    }
++
++    PanelMultiView.hidePopup(this._identityPopup);
++    this.refreshJITPermissionToggle();
++    BrowserCommands.reload();
++  },
+ };
+diff --git a/browser/components/controlcenter/content/identityPanel.inc.xhtml b/browser/components/controlcenter/content/identityPanel.inc.xhtml
+--- a/browser/components/controlcenter/content/identityPanel.inc.xhtml
++++ b/browser/components/controlcenter/content/identityPanel.inc.xhtml
+@@ -99,6 +99,15 @@
+                 data-l10n-id="identity-clear-site-data"
+                 class="subviewbutton"/>
+       </vbox>
++      <vbox id="identity-popup-jit-footer"
++            class="panel-subview-footer-button">
++        <toolbarbutton id="identity-popup-enable-jit-button"
++                       class="subviewbutton">
++          <label data-l10n-id="panel-enable-jit" flex="1"/>
++          <html:moz-toggle id="identity-popup-enable-jit-toggle"
++                           style="pointer-events: none;"/>
++        </toolbarbutton>
++      </vbox>
+     </panelview>
+ 
+     <!-- Security SubView -->
+diff --git a/dom/ipc/ProcessIsolation.cpp b/dom/ipc/ProcessIsolation.cpp
+--- a/dom/ipc/ProcessIsolation.cpp
++++ b/dom/ipc/ProcessIsolation.cpp
+@@ -160,6 +161,72 @@ bool AllowJITForSiteOrigin(nsIURI* aSiteOriginURI,
+   return isJitAllowed;
+ }
+ 
++// Site permissions are evaluated for the top-level site, including when
++// a subframe or worker triggers process selection.
++static bool IsJITEnabledForSiteOrigin(nsIURI* aSiteOriginURI,
++                                      WindowGlobalParent* aParentWindow,
++                                      nsIPrincipal* aPrincipal) {
++  const bool defaultEnabled = Preferences::GetBool("librezen.jit.enabled-by-default", true);
++  if (!aSiteOriginURI || !aPrincipal ||
++      !aPrincipal->GetIsContentPrincipal()) {
++    return defaultEnabled;
++  }
++
++  nsCOMPtr<nsIURI> effectiveSiteOriginURI = aSiteOriginURI;
++  if (aParentWindow) {
++    nsAutoCString topSiteOriginNoSuffix;
++    nsresult rv = aParentWindow->TopWindowContext()
++                      ->DocumentPrincipal()
++                      ->GetSiteOriginNoSuffix(topSiteOriginNoSuffix);
++    if (NS_FAILED(rv)) {
++      return defaultEnabled;
++    }
++
++    rv = NS_NewURI(getter_AddRefs(effectiveSiteOriginURI),
++                   topSiteOriginNoSuffix);
++    if (NS_FAILED(rv)) {
++      return defaultEnabled;
++    }
++  }
++
++  nsCOMPtr<nsIPrincipal> sitePrincipal = BasePrincipal::CreateContentPrincipal(
++      effectiveSiteOriginURI, aPrincipal->OriginAttributesRef());
++  if (!sitePrincipal) {
++    return defaultEnabled;
++  }
++
++  RefPtr<PermissionManager> permissionManager =
++      PermissionManager::GetInstance();
++  if (!permissionManager) {
++    return defaultEnabled;
++  }
++
++  uint32_t action = nsIPermissionManager::UNKNOWN_ACTION;
++  nsresult rv = permissionManager->TestExactPermissionFromPrincipal(
++      sitePrincipal, "jit"_ns, &action);
++  if (NS_FAILED(rv)) {
++    return defaultEnabled;
++  }
++
++  if (action == nsIPermissionManager::ALLOW_ACTION) {
++    return true;
++  }
++  if (action == nsIPermissionManager::DENY_ACTION) {
++    return false;
++  }
++  return defaultEnabled;
++}
++
++static bool IsJITEnabledForLoad(nsIPrincipal* aResultPrincipal,
++                                nsIURI* aSiteOriginURI,
++                                WindowGlobalParent* aParentWindow) {
++  if (!AllowJITForSiteOrigin(aSiteOriginURI, aParentWindow)) {
++    return false;
++  }
++  return IsJITEnabledForSiteOrigin(aSiteOriginURI, aParentWindow,
++                                   aResultPrincipal);
++}
++
+ /**
+  * Certain URIs have special isolation behaviour, and need to be loaded within
+  * specific process types.
+@@ -885,5 +952,8 @@ Result<NavigationIsolationOptions, nsresult> IsolationOptionsForNavigation(
+   nsCOMPtr<nsIURI> siteOriginURI;
+   MOZ_TRY(NS_NewURI(getter_AddRefs(siteOriginURI), siteOriginNoSuffix));
+ 
++  const bool jitDisabled =
++      !IsJITEnabledForLoad(resultOrPrecursor, siteOriginURI, aParentWindow);
++
+   // Check if we've already loaded a document with the given principal in some
+   // content process. We want to finish the load in the same process in that
+@@ -953,5 +1024,5 @@ Result<NavigationIsolationOptions, nsresult> IsolationOptionsForNavigation(
+   options.mRemoteType = RemoteType::SharedWeb(originAttributes);
+ 
+-  if (!AllowJITForSiteOrigin(siteOriginURI, aParentWindow)) {
++  if (jitDisabled) {
+     options.mRemoteType = options.mRemoteType.WithDisableJit(true);
+   }
+@@ -1146,6 +1216,8 @@ Result<WorkerIsolationOptions, nsresult> IsolationOptionsForWorker(
+   options.mRemoteType =
+       RemoteType::SharedWeb(resultOrPrecursor->OriginAttributesRef());
+ 
+-  if (!AllowJITForSiteOrigin(siteOriginURI, nullptr)) {
++  const bool jitDisabled =
++      !IsJITEnabledForLoad(resultOrPrecursor, siteOriginURI, nullptr);
++  if (jitDisabled) {
+     options.mRemoteType = options.mRemoteType.WithDisableJit(true);
+   }
+@@ -1352,5 +1424,7 @@ Result<RemoteType, nsresult> PredictRemoteTypeForURI(
+   RemoteType remoteType = RemoteType::SharedWeb(aOriginAttributes);
+ 
+-  if (!AllowJITForSiteOrigin(siteOriginURI, nullptr)) {
++  const bool jitDisabled =
++      !IsJITEnabledForLoad(principal, siteOriginURI, nullptr);
++  if (jitDisabled) {
+     remoteType = remoteType.WithDisableJit(true);
+   }
+
+diff --git a/browser/modules/SitePermissions.sys.mjs b/browser/modules/SitePermissions.sys.mjs
+--- a/browser/modules/SitePermissions.sys.mjs
++++ b/browser/modules/SitePermissions.sys.mjs
+@@ -1028,7 +1028,12 @@
+     xr: {
+       exactHostMatch: true,
+     },
+ 
++    jit: {
++      labelID: "jit",
++      exactHostMatch: false,
++    },
++
+     "focus-tab-by-prompt": {
+       exactHostMatch: true,
+       states: [SitePermissions.UNKNOWN, SitePermissions.ALLOW],
+diff --git a/browser/components/preferences/dialogs/sitePermissions.js b/browser/components/preferences/dialogs/sitePermissions.js
+--- a/browser/components/preferences/dialogs/sitePermissions.js
++++ b/browser/components/preferences/dialogs/sitePermissions.js
+@@ -53,6 +53,10 @@ const sitePermissionsL10n = {
+     disableLabel: "permissions-site-camera-disable-label",
+     disableDescription: "permissions-site-camera-disable-desc",
+   },
++  jit: {
++    window: "permissions-site-jit-window2",
++    description: "permissions-site-jit-desc",
++  },
+   microphone: {
+     window: "permissions-site-microphone-window2",
+     description: "permissions-site-microphone-desc",
+diff --git a/browser/components/preferences/config/permissions-data.mjs b/browser/components/preferences/config/permissions-data.mjs
+--- a/browser/components/preferences/config/permissions-data.mjs
++++ b/browser/components/preferences/config/permissions-data.mjs
+@@ -195,7 +195,11 @@
+ Preferences.addSetting({
+   id: "xrSettingsButton",
+   onUserClick: () => showPermissionExceptions({ permissionType: "xr" }),
+ });
++Preferences.addSetting({
++  id: "javascriptJIT",
++  onUserClick: () => showPermissionExceptions({ permissionType: "jit" }),
++});
+ Preferences.addSetting({
+   id: "popupPolicy",
+   pref: "dom.disable_open_during_load",
+@@ -597,6 +601,16 @@ SettingGroupManager.registerGroups({
+                 "permissions-remove.label,permissions-remove-all.label,permissions-site-autoplay-window2.title,permissions-site-autoplay-desc,",
+             },
+           },
++          {
++            id: "javascriptJIT",
++            control: "moz-box-button",
++            l10nId: "permissions-jit2",
++            controlAttrs: {
++              ".iconSrc": "chrome://browser/skin/jit.svg",
++              "search-l10n-ids":
++                "permissions-remove.label,permissions-remove-all.label,permissions-site-jit-window2.title,permissions-site-jit-desc",
++            },
++          },
+           {
+             id: "xrSettingsButton",
+             control: "moz-box-button",
+diff --git a/browser/locales/en-US/chrome/browser/sitePermissions.properties b/browser/locales/en-US/chrome/browser/sitePermissions.properties
+--- a/browser/locales/en-US/chrome/browser/sitePermissions.properties
++++ b/browser/locales/en-US/chrome/browser/sitePermissions.properties
+@@ -70,3 +70,4 @@
+ # LOCALIZATION NOTE (permission.open-protocol-handler.label):
+ # Open as a verb. "This site may open applications".
+ permission.open-protocol-handler.label = Open applications
++permission.jit.label = Enable JavaScript JIT
+diff --git a/browser/locales/en-US/browser/preferences/permissions.ftl b/browser/locales/en-US/browser/preferences/permissions.ftl
+--- a/browser/locales/en-US/browser/preferences/permissions.ftl
++++ b/browser/locales/en-US/browser/preferences/permissions.ftl
+@@ -250,7 +250,12 @@
+ permissions-doh-remove =
+     .label = Remove
+     .accesskey = R
+ 
+ permissions-doh-remove-all =
+     .label = Remove All
+     .accesskey = e
++
++permissions-jit2 = JavaScript JIT
++permissions-site-jit-window2 =
++    .title = JavaScript JIT Exceptions
++permissions-site-jit-desc = Manage which websites may use JavaScript just-in-time (JIT) compilation. Disabling JIT may also disable WebAssembly and may prevent some website features from working.
+diff --git a/browser/themes/shared/jar.inc.mn b/browser/themes/shared/jar.inc.mn
+--- a/browser/themes/shared/jar.inc.mn
++++ b/browser/themes/shared/jar.inc.mn
+@@ -243,6 +243,7 @@
+   skin/classic/browser/grid-sparkle.svg               (../shared/icons/grid-sparkle.svg)
+   skin/classic/browser/history.svg                    (../shared/icons/history.svg)
+   skin/classic/browser/history-20.svg                 (../shared/icons/history-20.svg)
++  skin/classic/browser/jit.svg                        (../shared/icons/jit.svg)
+   skin/classic/browser/home.svg                       (../shared/icons/home.svg)
+   skin/classic/browser/import.svg                     (../shared/icons/import.svg)
+   skin/classic/browser/labs-16.svg                    (../shared/icons/labs-16.svg)
+diff --git a/browser/themes/shared/icons/jit.svg b/browser/themes/shared/icons/jit.svg
+new file mode 100644
+--- /dev/null
++++ b/browser/themes/shared/icons/jit.svg
+@@ -0,0 +1,3 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="context-fill" fill-opacity="context-fill-opacity">
++  <path fill-rule="evenodd" clip-rule="evenodd" d="M8.7764 2.30273C8.88539 1.90313 9.2977 1.66741 9.6973 1.77637C10.0969 1.88534 10.3326 2.29768 10.2237 2.69726L7.22367 13.6973C7.11469 14.0968 6.70235 14.3325 6.30277 14.2236C5.90318 14.1147 5.66747 13.7023 5.7764 13.3027L8.7764 2.30273ZM4.0059 3.93555C4.31758 3.66282 4.79171 3.69424 5.06449 4.00586C5.33721 4.31753 5.30576 4.79167 4.99418 5.06445L1.85355 7.81152C1.73981 7.91112 1.73981 8.08888 1.85355 8.18848L4.99418 10.9355C5.30576 11.2083 5.33721 11.6825 5.06449 11.9941C4.79171 12.3058 4.31758 12.3372 4.0059 12.0645L0.866248 9.31738C0.0694243 8.62016 0.0694264 7.37984 0.866248 6.68262L4.0059 3.93555ZM10.9356 4.00586C11.2084 3.69428 11.6825 3.66283 11.9942 3.93555L15.1338 6.68262C15.9306 7.37984 15.9306 8.62016 15.1338 9.31738L11.9942 12.0645C11.6825 12.3372 11.2084 12.3057 10.9356 11.9941C10.6629 11.6825 10.6943 11.2083 11.0059 10.9355L14.1465 8.18848C14.2602 8.08889 14.2602 7.91111 14.1465 7.81152L11.0059 5.06445C10.6943 4.79167 10.6629 4.31755 10.9356 4.00586Z" />
++</svg>

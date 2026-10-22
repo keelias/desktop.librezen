@@ -1,0 +1,10 @@
+diff --git a/dom/ipc/ProcessIsolation.cpp b/dom/ipc/ProcessIsolation.cpp
+--- a/dom/ipc/ProcessIsolation.cpp
++++ b/dom/ipc/ProcessIsolation.cpp
+@@ -1006,3 +1006,6 @@ Result<NavigationIsolationOptions, nsresult> IsolationOptionsForNavigation(
+         if (!wgp->GetRemoteType().IsNotRemote() &&
+             principalIsSameSite(wgp->DocumentPrincipal())) {
++          if (wgp->GetRemoteType().IsJitDisabled() != jitDisabled) {
++            continue;
++          }
+           MOZ_LOG(gProcessIsolationLog, LogLevel::Debug,

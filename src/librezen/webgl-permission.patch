@@ -1,0 +1,845 @@
+diff --git a/browser/base/content/popup-notifications.inc.xhtml b/browser/base/content/popup-notifications.inc.xhtml
+index 43c2429..99b5c5a 100644
+--- a/browser/base/content/popup-notifications.inc.xhtml
++++ b/browser/base/content/popup-notifications.inc.xhtml
+@@ -196,6 +196,13 @@
+       </popupnotificationcontent>
+     </popupnotification>
+ 
++    <popupnotification id="webgl-permissions-prompt-notification" hidden="true">
++      <popupnotificationcontent orient="vertical">
++        <description class="popup-notification-description"/>
++        <label id="webgl-permissions-prompt-warning"/>
++      </popupnotificationcontent>
++    </popupnotification>
++
+     <popupnotification id="credential-chooser-notification" hidden="true">
+       <popupnotificationheader id="credential-chooser-header" orient="horizontal">
+         <html:div id="credential-chooser-header-container">
+diff --git a/browser/modules/ObserverForwarder.sys.mjs b/browser/modules/ObserverForwarder.sys.mjs
+index 8cf14355f3..bdecc6c230 100644
+--- a/browser/modules/ObserverForwarder.sys.mjs
++++ b/browser/modules/ObserverForwarder.sys.mjs
+@@ -23,1 +23,3 @@
++  WebGLPermissionPromptHelper:
++    "moz-src:///browser/modules/WebGLPermissionPromptHelper.sys.mjs",
+ });
+@@ -38,2 +40,4 @@
+   "webauthn-prompt": ["WebAuthnPromptHelper"],
++  "webgl-permissions-prompt": ["WebGLPermissionPromptHelper"],
++  "webgl-permissions-prompt-hide-doorhanger": ["WebGLPermissionPromptHelper"],
+ };
+diff --git a/browser/modules/WebGLPermissionPromptHelper.sys.mjs b/browser/modules/WebGLPermissionPromptHelper.sys.mjs
+new file mode 100644
+index 0000000..ead4eef
+--- /dev/null
++++ b/browser/modules/WebGLPermissionPromptHelper.sys.mjs
+@@ -0,0 +1,132 @@
++/* This Source Code Form is subject to the terms of the Mozilla Public
++ * License, v. 2.0. If a copy of the MPL was not distributed with this
++ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
++
++import { PrivateBrowsingUtils } from "resource://gre/modules/PrivateBrowsingUtils.sys.mjs";
++
++export let WebGLPermissionPromptHelper = {
++  _permissionsPrompt: "webgl-permissions-prompt",
++  _permissionsPromptHideDoorHanger: "webgl-permissions-prompt-hide-doorhanger",
++  _notificationIcon: "webgl-notification-icon",
++
++  // aSubject is an nsIBrowser (e10s) or an nsIDOMWindow (non-e10s).
++  // aData is an Origin string.
++  observe(aSubject, aTopic, aData) {
++    if (
++      aTopic != this._permissionsPrompt &&
++      aTopic != this._permissionsPromptHideDoorHanger
++    ) {
++      return;
++    }
++
++    let browser;
++    if (aSubject instanceof Ci.nsIDOMWindow) {
++      browser = aSubject.docShell.chromeEventHandler;
++    } else {
++      browser = aSubject;
++    }
++
++    let window = browser?.documentGlobal;
++    if (!window) {
++      // Without knowing where this came from, we can't show the prompt.
++      return;
++    }
++
++    let principal =
++      Services.scriptSecurityManager.createContentPrincipalFromOrigin(aData);
++    let permission = Services.perms.testPermissionFromPrincipal(principal, "webgl");
++    if (permission === Ci.nsIPermissionManager.DENY_ACTION ||
++        permission === Ci.nsIPermissionManager.ALLOW_ACTION) {
++      return;
++    }
++
++    if (window.PopupNotifications.getNotification(
++      this._permissionsPrompt,
++      browser
++    )) {
++      return;
++    }
++
++    let { gNavigatorBundle, gBrowserBundle } = window;
++    let message = gNavigatorBundle.getFormattedString(
++      "webgl.siteprompt2",
++      ["<>"],
++      1
++    );
++
++    function setWebGLPermission(aPerm, aPersistent) {
++      Services.perms.addFromPrincipal(
++        principal,
++        "webgl",
++        aPerm,
++        aPersistent
++          ? Ci.nsIPermissionManager.EXPIRE_NEVER
++          : Ci.nsIPermissionManager.EXPIRE_SESSION
++      );
++    }
++
++    let mainAction = {
++      label: gNavigatorBundle.getString("webgl.allow2"),
++      accessKey: gNavigatorBundle.getString("webgl.allow2.accesskey"),
++      callback(state) {
++        setWebGLPermission(
++          Ci.nsIPermissionManager.ALLOW_ACTION,
++          state && state.checkboxChecked
++        );
++          let tab = window?.gBrowser?.getTabForBrowser(browser);
++          if (tab) {
++            window.gBrowser.reloadTab(tab);
++          }
++      },
++    };
++
++    let secondaryActions = [
++      {
++        label: gNavigatorBundle.getString("webgl.block"),
++        accessKey: gNavigatorBundle.getString("webgl.block.accesskey"),
++        callback(state) {
++          setWebGLPermission(
++            Ci.nsIPermissionManager.DENY_ACTION,
++            state && state.checkboxChecked
++          );
++        },
++      },
++    ];
++
++    let checkbox = {
++      // In PB mode, we don't want the "always remember" checkbox
++      show: !PrivateBrowsingUtils.isWindowPrivate(window),
++    };
++    if (checkbox.show) {
++      checkbox.checked = true;
++      checkbox.label = gBrowserBundle.GetStringFromName("webgl.remember2");
++    }
++
++    let options = {
++      checkbox,
++      name: principal.host,
++      learnMoreURL:
++        Services.urlFormatter.formatURLPref("app.support.baseURL") +
++        "webgl-prompt",
++      dismissed: aTopic == this._permissionsPromptHideDoorHanger,
++      eventCallback(e) {
++        if (e == "showing" && this?.browser?.ownerDocument) {
++          this.browser.ownerDocument.getElementById(
++            "webgl-permissions-prompt-warning"
++          ).textContent = gBrowserBundle.GetStringFromName(
++            "webgl.siteprompt2.warning"
++          );
++        }
++      },
++    };
++    window.PopupNotifications.show(
++      browser,
++      this._permissionsPrompt,
++      message,
++      this._notificationIcon,
++      mainAction,
++      secondaryActions,
++      options
++    );
++  },
++};
+diff --git a/browser/themes/shared/notification-icons.css b/browser/themes/shared/notification-icons.css
+index f65f6bb61a..e5bbe3f976 100644
+--- a/browser/themes/shared/notification-icons.css
++++ b/browser/themes/shared/notification-icons.css
+@@ -203,6 +203,15 @@
+   list-style-image: url(chrome://browser/skin/canvas-blocked.svg);
+ }
+ 
++#webgl-notification-icon,
++.webgl-icon {
++  list-style-image: url(chrome://browser/skin/webgl.svg);
++}
++
++.webgl-icon.blocked-permission-icon {
++  list-style-image: url(chrome://browser/skin/webgl-blocked.svg);
++}
++
+ #webauthn-notification-icon,
+ .popup-notification-icon[popupid^="webauthn-prompt-"] {
+   list-style-image: url(chrome://browser/skin/fingerprint.svg);
+diff --git a/dom/canvas/ClientWebGLContext.cpp b/dom/canvas/ClientWebGLContext.cpp
+index 5aaa427..52b587f 100644
+--- a/dom/canvas/ClientWebGLContext.cpp
++++ b/dom/canvas/ClientWebGLContext.cpp
+@@ -24,7 +24,9 @@
+ #include "mozilla/RandomNum.h"
+ #include "mozilla/ResultVariant.h"
+ #include "mozilla/ScopeExit.h"
++#include "mozilla/StaticPrefs_librewolf.h"
+ #include "mozilla/StaticPrefs_webgl.h"
++#include "mozilla/dom/BrowserChild.h"
+ #include "mozilla/dom/BufferSourceBinding.h"
+ #include "mozilla/dom/Document.h"
+ #include "mozilla/dom/GeneratePlaceholderCanvasData.h"
+@@ -45,6 +47,8 @@
+ #include "mozilla/layers/WebRenderUserData.h"
+ #include "nsContentUtils.h"
+ #include "nsDisplayList.h"
++#include "nsIPermissionManager.h"
++#include "nsIPrincipal.h"
+ 
+ namespace mozilla {
+ 
+@@ -863,6 +867,235 @@ void ClientWebGLContext::ResetBitmap() {
+   Run<RPROC(Resize)>(size);  // No-change resize still clears/resets everything.
+ }
+ 
++static uint32_t GetWebGLPermission(nsIPrincipal* aPrincipal) {
++  if (!aPrincipal) {
++    return nsIPermissionManager::UNKNOWN_ACTION;
++  }
++
++  if (IsUnrestrictedPrincipal(aPrincipal)) {
++    return nsIPermissionManager::ALLOW_ACTION;
++  }
++
++  nsresult rv;
++  nsCOMPtr<nsIPermissionManager> permissionManager =
++      do_GetService(NS_PERMISSIONMANAGER_CONTRACTID, &rv);
++  NS_ENSURE_SUCCESS(rv, nsIPermissionManager::UNKNOWN_ACTION);
++
++  uint32_t permission = nsIPermissionManager::UNKNOWN_ACTION;
++  rv = permissionManager->TestPermissionFromPrincipal(aPrincipal, "webgl"_ns,
++                                                      &permission);
++  NS_ENSURE_SUCCESS(rv, nsIPermissionManager::UNKNOWN_ACTION);
++
++  return permission;
++}
++
++static bool IsWebGLAllowed_impl(
++    bool webGLPromptEnabled, JSContext* aCx, nsIPrincipal* aPrincipal,
++    const std::function<void(const nsAutoString&)>& aReportToConsole,
++    const std::function<void(bool)>& aTryPrompt) {
++  if (!webGLPromptEnabled) {
++    return true;
++  }
++
++  if (!aCx) {
++    return false;
++  }
++
++  if (IsUnrestrictedPrincipal(aPrincipal)) {
++    return true;
++  }
++
++  nsAutoCString origin;
++  nsresult rv = aPrincipal ? aPrincipal->GetOrigin(origin) : NS_ERROR_FAILURE;
++
++  const uint32_t permission = GetWebGLPermission(aPrincipal);
++  switch (permission) {
++    case nsIPermissionManager::ALLOW_ACTION:
++      return true;
++    case nsIPermissionManager::DENY_ACTION:
++      return false;
++    default:
++      break;
++  }
++
++  bool hidePermissionDoorhanger = StaticPrefs::librewolf_webgl_prompt_hide();
++
++  nsAutoString message;
++  message.AppendPrintf(
++      "Blocked %s from creating WebGL context but prompting the user.",
++      NS_SUCCEEDED(rv) ? origin.get() : "unknown");
++  aReportToConsole(message);
++
++  aTryPrompt(hidePermissionDoorhanger);
++
++  return false;
++}
++
++static bool IsWebGLAllowed(dom::Document* aDocument, JSContext* aCx,
++                           nsIPrincipal* aPrincipal) {
++  if (NS_WARN_IF(!aDocument)) {
++    return false;
++  }
++
++  const bool webGLPromptEnabled = StaticPrefs::librewolf_webgl_prompt();
++
++  if (!webGLPromptEnabled) {
++    return true;
++  }
++
++  auto reportToConsole = [&](const nsAutoString& aMessage) {
++    nsContentUtils::ReportToConsoleNonLocalized(
++        aMessage, nsIScriptError::warningFlag, "Security"_ns, aDocument);
++  };
++
++  auto prompt = [&](bool aHidePermissionDoorhanger) {
++    if (!aPrincipal) {
++      return;
++    }
++
++    nsAutoCString origin;
++    if (NS_FAILED(aPrincipal->GetOrigin(origin))) {
++      return;
++    }
++
++    if (!XRE_IsContentProcess()) {
++      MOZ_ASSERT_UNREACHABLE(
++          "Who's calling this from the parent process without a chrome "
++          "window (it would have been exempt from the RFP targets)?");
++      return;
++    }
++
++    nsPIDOMWindowOuter* window = aDocument->GetWindow();
++    RefPtr<dom::BrowserChild> browserChild = dom::BrowserChild::GetFrom(window);
++    if (!browserChild) {
++      return;
++    }
++
++    browserChild->SendShowWebGLPermissionPrompt(origin,
++                                                aHidePermissionDoorhanger);
++  };
++
++  return IsWebGLAllowed_impl(webGLPromptEnabled, aCx, aPrincipal,
++                             reportToConsole, prompt);
++}
++
++static bool IsWebGLAllowed(dom::OffscreenCanvas* aOffscreenCanvas,
++                           JSContext* aCx, nsIPrincipal* aPrincipal) {
++  if (NS_WARN_IF(!aOffscreenCanvas)) {
++    return false;
++  }
++
++  const bool webGLPromptEnabled = StaticPrefs::librewolf_webgl_prompt();
++
++  if (!webGLPromptEnabled) {
++    return true;
++  }
++
++  Maybe<uint64_t> winId = aOffscreenCanvas->GetWindowID();
++
++  if (winId.isSome() && *winId == UINT64_MAX) {
++    winId = Nothing();
++  }
++
++  auto reportToConsole = [&](const nsAutoString& aMessage) {
++    if (winId.isNothing()) {
++      return;
++    }
++
++    nsContentUtils::ReportToConsoleByWindowID(
++        aMessage, nsIScriptError::warningFlag, "Security"_ns, *winId);
++  };
++
++  nsCString origin;
++  if (!aPrincipal || NS_FAILED(aPrincipal->GetOrigin(origin))) {
++    origin.Truncate();
++  }
++
++  RefPtr<dom::OffscreenCanvas> canvas = aOffscreenCanvas;
++
++  auto prompt = [origin = std::move(origin),
++                 canvas](bool aHidePermissionDoorhanger) {
++    if (origin.IsEmpty()) {
++      return;
++    }
++
++    if (!XRE_IsContentProcess()) {
++      MOZ_ASSERT_UNREACHABLE(
++          "Who's calling this from the parent process without a chrome "
++          "window (it would have been exempt from the RFP targets)?");
++      return;
++    }
++
++    if (NS_IsMainThread()) {
++      nsCOMPtr<nsIGlobalObject> global = canvas->GetRelevantGlobal();
++      if (!global) {
++        return;
++      }
++
++      RefPtr<nsPIDOMWindowInner> window = global->GetAsInnerWindow();
++      if (!window) {
++        return;
++      }
++
++      RefPtr<dom::BrowserChild> browserChild =
++          dom::BrowserChild::GetFrom(window);
++      if (!browserChild) {
++        return;
++      }
++
++      browserChild->SendShowWebGLPermissionPrompt(origin,
++                                                  aHidePermissionDoorhanger);
++      return;
++    }
++
++    if (auto* workerPrivate = dom::GetCurrentThreadWorkerPrivate()) {
++      class WebGLPermissionPromptRunnable final
++          : public dom::WorkerProxyToMainThreadRunnable {
++       public:
++        WebGLPermissionPromptRunnable(const nsCString& aOrigin,
++                                      bool aHidePermissionDoorhanger)
++            : mOrigin(aOrigin),
++              mHidePermissionDoorhanger(aHidePermissionDoorhanger) {}
++
++        // Runnables don't support MOZ_CAN_RUN_SCRIPT, bug 1535398
++        MOZ_CAN_RUN_SCRIPT_BOUNDARY void RunOnMainThread(
++            dom::WorkerPrivate* aWorkerPrivate) override {
++          MOZ_ASSERT(aWorkerPrivate);
++          AssertIsOnMainThread();
++
++          RefPtr<nsPIDOMWindowInner> window =
++              aWorkerPrivate->GetAncestorWindow();
++          RefPtr<dom::BrowserChild> browserChild =
++              dom::BrowserChild::GetFrom(window);
++          if (!browserChild) {
++            return;
++          }
++
++          browserChild->SendShowWebGLPermissionPrompt(
++              mOrigin, mHidePermissionDoorhanger);
++        }
++
++        void RunBackOnWorkerThreadForCleanup(
++            dom::WorkerPrivate* aWorkerPrivate) override {
++          MOZ_ASSERT(aWorkerPrivate);
++          aWorkerPrivate->AssertIsOnWorkerThread();
++        }
++
++       private:
++        nsCString mOrigin;
++        bool mHidePermissionDoorhanger;
++      };
++
++      RefPtr<WebGLPermissionPromptRunnable> runnable =
++          new WebGLPermissionPromptRunnable(origin, aHidePermissionDoorhanger);
++      runnable->Dispatch(workerPrivate);
++    }
++  };
++
++  return IsWebGLAllowed_impl(webGLPromptEnabled, aCx, aPrincipal,
++                             reportToConsole, prompt);
++}
++
+ bool ClientWebGLContext::CreateHostContext(const uvec2& requestedSize) {
+   const auto pNotLost = MakeRefPtr<webgl::NotLostData>(*this);
+   auto& notLost = *pNotLost;
+@@ -872,6 +1105,31 @@ bool ClientWebGLContext::CreateHostContext(const uvec2& requestedSize) {
+       return Err("WebGL disabled, see about:support for why");
+     }
+ 
++    if (mCanvasElement && !StaticPrefs::webgl_disabled()) {
++      if (!NS_IsMainThread()) {
++        return Err("HTMLCanvasElement used off the main thread.");
++      }
++
++      if (!IsWebGLAllowed(mCanvasElement->OwnerDoc(),
++                          nsContentUtils::GetCurrentJSContext(),
++                          mCanvasElement->NodePrincipal())) {
++        return Err("WebGL is currently disabled.");
++      }
++    } else if (mOffscreenCanvas && !StaticPrefs::webgl_disabled()) {
++      nsIPrincipal* principal = nullptr;
++
++      if (nsIGlobalObject* global = mOffscreenCanvas->GetRelevantGlobal()) {
++        principal = global->PrincipalOrNull();
++      }
++
++      if (!IsWebGLAllowed(mOffscreenCanvas,
++                          nsContentUtils::GetCurrentJSContext(), principal)) {
++        return Err("WebGL is currently disabled.");
++      }
++    } else {
++      return Err("WebGL is currently disabled.");
++    }
++
+     auto options = *mInitialOptions;
+     if (StaticPrefs::webgl_disable_fail_if_major_performance_caveat()) {
+       options.failIfMajorPerformanceCaveat = false;
+diff --git a/dom/ipc/BrowserParent.cpp b/dom/ipc/BrowserParent.cpp
+index 7d405ed7d3..95718de445 100644
+--- a/dom/ipc/BrowserParent.cpp
++++ b/dom/ipc/BrowserParent.cpp
+@@ -4115,6 +4115,29 @@ mozilla::ipc::IPCResult BrowserParent::RecvShowCanvasPermissionPrompt(
+   return IPC_OK();
+ }
+ 
++mozilla::ipc::IPCResult BrowserParent::RecvShowWebGLPermissionPrompt(const nsCString& aOrigin, const bool& aHideDoorHanger) {
++  nsCOMPtr<nsIBrowser> browser =
++         mFrameElement ? mFrameElement->AsBrowser() : nullptr;
++  if (!browser) {
++    // If the tab is being closed, the browser may not be available.
++    // In this case we can ignore the request.
++    return IPC_OK();
++  }
++  nsCOMPtr<nsIObserverService> os = services::GetObserverService();
++  if (!os) {
++    return IPC_FAIL_NO_REASON(this);
++  }
++  nsresult rv = os->NotifyObservers(
++      browser,
++      aHideDoorHanger ? "webgl-permissions-prompt-hide-doorhanger"
++                                         : "webgl-permissions-prompt",
++      NS_ConvertUTF8toUTF16(aOrigin).get());
++  if (NS_FAILED(rv)) {
++    return IPC_FAIL_NO_REASON(this);
++  }
++  return IPC_OK();
++}
++
+ mozilla::ipc::IPCResult BrowserParent::RecvVisitURI(
+     nsIURI* aURI, nsIURI* aLastVisitedURI, const uint32_t& aFlags,
+     const uint64_t& aBrowserId) {
+diff --git a/dom/ipc/BrowserParent.h b/dom/ipc/BrowserParent.h
+index 94d5cb546a..c98d7a6a9c 100644
+--- a/dom/ipc/BrowserParent.h
++++ b/dom/ipc/BrowserParent.h
+@@ -741,6 +741,8 @@ class BrowserParent final : public PBrowserParent,
+   mozilla::ipc::IPCResult RecvShowCanvasPermissionPrompt(
+       const nsCString& aOrigin, const bool& aHideDoorHanger);
+ 
++  mozilla::ipc::IPCResult RecvShowWebGLPermissionPrompt(const nsCString& aOrigin, const bool& aHideDoorHanger);
++
+   mozilla::ipc::IPCResult RecvSetSystemFont(const nsCString& aFontName);
+   mozilla::ipc::IPCResult RecvGetSystemFont(nsCString* aFontName);
+ 
+diff --git a/dom/ipc/PBrowser.ipdl b/dom/ipc/PBrowser.ipdl
+index 76dd02a60d..f045291425 100644
+--- a/dom/ipc/PBrowser.ipdl
++++ b/dom/ipc/PBrowser.ipdl
+@@ -642,6 +642,14 @@ parent:
+      */
+     async ShowCanvasPermissionPrompt(nsCString aOrigin,
+                                      bool aHideDoorHanger);
++    /**
++     * This function is used to notify the parent that it should display a
++     * WebGL permission prompt.
++     *
++     * @param aOrigin origin string of the document that is requesting access.
++     */
++    async ShowWebGLPermissionPrompt(nsCString aOrigin,
++                                                                       bool aHideDoorHanger);
+ 
+     sync SetSystemFont(nsCString aFontName);
+     sync GetSystemFont() returns (nsCString retval);
+diff --git a/browser/components/preferences/config/permissions-data.mjs b/browser/components/preferences/config/permissions-data.mjs
+--- a/browser/components/preferences/config/permissions-data.mjs
++++ b/browser/components/preferences/config/permissions-data.mjs
+@@ -63,6 +63,9 @@ Preferences.addAll([
+   { id: PREF_ADDON_RECOMMENDATIONS_ENABLED, type: "bool" },
+   { id: PREF_UPLOAD_ENABLED, type: "bool" },
+   { id: "datareporting.usage.uploadEnabled", type: "bool" },
++
++  { id: "librewolf.webgl.prompt", type: "bool" },
++  { id: "webgl.disabled", type: "bool" },
+ ]);
+ 
+ /**
+@@ -498,6 +501,27 @@ Preferences.addSetting(
+   })
+ );
+ 
++
++Preferences.addSetting({
++  id: "webglPermissionPromptEnabled",
++  pref: "librewolf.webgl.prompt",
++});
++
++Preferences.addSetting({
++  id: "webglDisabled",
++  pref: "webgl.disabled",
++});
++Preferences.addSetting({
++  id: "webglSettingsButton",
++  onUserClick: () => showPermissionExceptions({ permissionType: "webgl" }),
++  deps: ["webglPermissionPromptEnabled", "webglDisabled"],
++  visible: deps => {
++    return deps.webglPermissionPromptEnabled.value && !deps.webglDisabled.value;
++  },
++});
++
++
++
+ SettingGroupManager.registerGroups({
+   permissions: {
+     id: "permissions",
+@@ -607,6 +631,16 @@ SettingGroupManager.registerGroups({
+                 "permissions-remove.label,permissions-remove-all.label,permissions-site-xr-window2.title,permissions-site-xr-desc,permissions-site-xr-disable-label,permissions-site-xr-disable-desc,",
+             },
+           },
++          {
++            id: "webglSettingsButton",
++            control: "moz-box-button",
++            l10nId: "permissions-webgl2",
++            controlAttrs: {
++              ".iconSrc": "chrome://browser/skin/webgl.svg",
++              "search-l10n-ids":
++                "permissions-remove.label,permissions-remove-all.label,permissions-site-webgl-window2.title,permissions-site-webgl-desc",
++            },
++          },
+         ],
+       },
+       {
+diff --git a/browser/base/content/navigator-toolbox.inc.xhtml b/browser/base/content/navigator-toolbox.inc.xhtml
+--- a/browser/base/content/navigator-toolbox.inc.xhtml
++++ b/browser/base/content/navigator-toolbox.inc.xhtml
+@@ -266,6 +266,8 @@
+                       data-l10n-id="urlbar-autoplay-media-blocked"/>
+                 <image data-permission-id="canvas" class="blocked-permission-icon canvas-icon" role="button"
+                       data-l10n-id="urlbar-canvas-blocked"/>
++                <image data-permission-id="webgl" class="blocked-permission-icon webgl-icon" role="button"
++                      data-l10n-id="urlbar-webgl-blocked"/>
+                 <image data-permission-id="midi" class="blocked-permission-icon midi-icon" role="button"
+                       data-l10n-id="urlbar-midi-blocked"/>
+                 <image data-permission-id="serial" class="blocked-permission-icon serial-icon" role="button"
+@@ -297,6 +299,8 @@
+                       data-l10n-id="urlbar-addons-notification-anchor"/>
+               <image id="canvas-notification-icon" class="notification-anchor-icon" role="button"
+                       data-l10n-id="urlbar-canvas-notification-anchor"/>
++              <image id="webgl-notification-icon" class="notification-anchor-icon" role="button"
++                      data-l10n-id="urlbar-webgl-notification-anchor"/>
+               <image id="indexedDB-notification-icon" class="notification-anchor-icon indexedDB-icon" role="button"
+                       data-l10n-id="urlbar-indexed-db-notification-anchor"/>
+               <image id="password-notification-icon" class="notification-anchor-icon" role="button"
+diff --git a/browser/components/preferences/dialogs/sitePermissions.js b/browser/components/preferences/dialogs/sitePermissions.js
+--- a/browser/components/preferences/dialogs/sitePermissions.js
++++ b/browser/components/preferences/dialogs/sitePermissions.js
+@@ -47,6 +47,10 @@ const sitePermissionsL10n = {
+     disableLabel: "permissions-site-xr-disable-label",
+     disableDescription: "permissions-site-xr-disable-desc",
+   },
++  webgl: {
++    window: "permissions-site-webgl-window2",
++    description: "permissions-site-webgl-desc",
++  },
+   camera: {
+     window: "permissions-site-camera-window2",
+     description: "permissions-site-camera-desc",
+diff --git a/browser/modules/moz.build b/browser/modules/moz.build
+--- a/browser/modules/moz.build
++++ b/browser/modules/moz.build
+@@ -157,10 +157,11 @@ EXTRA_JS_MODULES += [
+ MOZ_SRC_FILES += [
+     "CanvasPermissionPromptHelper.sys.mjs",
+     "ContextId.sys.mjs",
+     "ObserverForwarder.sys.mjs",
+     "PrivateBrowsingUI.sys.mjs",
+     "SerialDeviceSharingHelper.sys.mjs",
+     "UIDensityTelemetry.sys.mjs",
++    "WebGLPermissionPromptHelper.sys.mjs",
+ ]
+ 
+ if CONFIG["MOZ_WIDGET_TOOLKIT"] == "windows":
+diff --git a/browser/modules/SitePermissions.sys.mjs b/browser/modules/SitePermissions.sys.mjs
+--- a/browser/modules/SitePermissions.sys.mjs
++++ b/browser/modules/SitePermissions.sys.mjs
+@@ -1043,6 +1043,12 @@ let gPermissions = {
+       },
+     },
+ 
++    webgl: {
++      get disabled() {
++        return !SitePermissions.webglPermissionPromptEnabled || SitePermissions.webglDisabled;
++      },
++    },
++
+     midi: {
+       exactHostMatch: true,
+       get disabled() {
+@@ -1076,6 +1082,21 @@ let gPermissions = {
+   },
+ };
+ 
++XPCOMUtils.defineLazyPreferenceGetter(
++  SitePermissions,
++  "webglPermissionPromptEnabled",
++  "librewolf.webgl.prompt",
++  true,
++  SitePermissions.invalidatePermissionList.bind(SitePermissions)
++);
++XPCOMUtils.defineLazyPreferenceGetter(
++  SitePermissions,
++  "webglDisabled",
++  "webgl.disabled",
++  false,
++  SitePermissions.invalidatePermissionList.bind(SitePermissions)
++);
++
+ SitePermissions.midiPermissionEnabled = Services.prefs.getBoolPref(
+   "dom.webmidi.enabled"
+ );
+diff --git a/browser/themes/shared/jar.inc.mn b/browser/themes/shared/jar.inc.mn
+--- a/browser/themes/shared/jar.inc.mn
++++ b/browser/themes/shared/jar.inc.mn
+@@ -293,5 +293,7 @@
+   skin/classic/browser/translations.svg               (../shared/icons/translations.svg)
+   skin/classic/browser/thumb-down.svg                 (../shared/icons/thumb-down.svg)
+   skin/classic/browser/topsites.svg                   (../shared/icons/topsites.svg)
++  skin/classic/browser/webgl.svg                      (../shared/icons/webgl.svg)
++  skin/classic/browser/webgl-blocked.svg              (../shared/icons/webgl-blocked.svg)
+   skin/classic/browser/window.svg                     (../shared/icons/window.svg)
+   skin/classic/browser/window-firefox.svg             (../shared/icons/window-firefox.svg)
+diff --git a/browser/themes/shared/icons/webgl.svg b/browser/themes/shared/icons/webgl.svg
+new file mode 100644
+index 0000000000..ffbf97c74d
+--- /dev/null
++++ b/browser/themes/shared/icons/webgl.svg
+@@ -0,0 +1,17 @@
++<?xml version="1.0" encoding="UTF-8" standalone="no"?>
++<svg
++   width="16"
++   height="16"
++   viewBox="0 0 16 16"
++   version="1.1"
++   id="svg1"
++   xml:space="preserve"
++   xmlns="http://www.w3.org/2000/svg"
++   xmlns:svg="http://www.w3.org/2000/svg"
++   fill="context-fill"
++   fill-opacity="context-fill-opacity"><defs
++     id="defs1" /><g
++     id="g27"
++     transform="translate(-95.002767,-238.87424)"><path
++       id="path26"
++       d="m 96.625679,239.87424 a 0.625,0.625 0 0 0 -0.625,0.625 0.625,0.625 0 0 0 0.625,0.625 h 0.626953 c 0.422091,-7e-5 0.751953,0.32791 0.751953,0.75 v 11.37109 a 0.625,0.625 0 0 0 0.625,0.625 0.625,0.625 0 0 0 0.624997,-0.625 v -1.35547 h 8.749998 c 1.095,0 1.99494,-0.90304 1.99219,-1.99804 l -0.0117,-5.01953 c -0.003,-1.09501 -0.90499,-1.99414 -2,-1.99414 h -8.730468 v -1.00391 c 0,-1.09772 -0.904231,-2.00019 -2.00195,-2 z m 2.628903,4.25391 h 8.730468 c 0.42057,0 0.74894,0.32747 0.75,0.74804 l 0.0117,5.01953 c 10e-4,0.41835 -0.32385,0.74415 -0.74219,0.74414 h -8.749998 z m 3.246088,1.74609 a 1.4999924,1.4999924 0 0 0 -1.5,1.5 1.4999924,1.4999924 0 0 0 1.5,1.5 1.4999924,1.4999924 0 0 0 1.5,-1.5 1.4999924,1.4999924 0 0 0 -1.5,-1.5 z" /></g></svg>
+diff --git a/browser/themes/shared/icons/webgl-blocked.svg b/browser/themes/shared/icons/webgl-blocked.svg
+new file mode 100644
+index 0000000000..6e18b7cf54
+--- /dev/null
++++ b/browser/themes/shared/icons/webgl-blocked.svg
+@@ -0,0 +1,18 @@
++<?xml version="1.0" encoding="UTF-8" standalone="no"?>
++<svg
++   width="16"
++   height="16"
++   viewBox="0 0 16 16"
++   version="1.1"
++   id="svg1"
++   xml:space="preserve"
++   xmlns="http://www.w3.org/2000/svg"
++   xmlns:svg="http://www.w3.org/2000/svg"
++   fill="context-fill"
++   fill-opacity="context-fill-opacity"><defs
++     id="defs1" /><g
++     id="g30"
++     transform="translate(-95.002999,-238.87424)"><path
++       id="path30"
++       style="stroke-linecap:round;paint-order:stroke fill markers"
++       d="m 95.604562,238.87619 c -0.463094,0.0319 -0.839908,0.6221 -0.419922,1.06446 l 1,1 1.820312,1.82031 v 10.48437 a 0.625,0.625 0 0 0 0.625,0.625 0.625,0.625 0 0 0 0.625,-0.625 v -1.35547 h 7.878908 l 2.80078,2.80079 c 0.24466,0.24372 0.6401,0.24372 0.88477,0 0.24415,-0.24409 0.24415,-0.64068 0,-0.88477 l -2.0625,-2.06445 -1.10157,-1.10157 h -0.002 l -3.72656,-3.72656 v -0.002 l -0.96289,-0.96289 h -0.002 l -1.82031,-1.82031 -1.249999,-1.25 -0.636719,-0.63672 -2.367187,-2.36719 -0.462891,-0.46289 -0.355469,-0.35547 c -0.147451,-0.13999 -0.31048,-0.19033 -0.464843,-0.17969 z m 6.056638,4.00196 1.25,1.25 h 5.07422 c 0.42057,0 0.74894,0.32747 0.75,0.74804 l 0.0117,5.01953 c 5e-5,0.0215 -0.004,0.0416 -0.006,0.0625 l 0.96289,0.96289 c 0.18374,-0.30216 0.29391,-0.65288 0.29297,-1.02929 l -0.0117,-5.01953 c -0.003,-1.09501 -0.90499,-1.99414 -2,-1.99414 z m -2.406248,1.25 h 0.117188 l 2.13867,2.14062 a 1.4999924,1.4999924 0 0 0 -0.50976,1.10547 1.4999924,1.4999924 0 0 0 1.5,1.5 1.4999924,1.4999924 0 0 0 1.11718,-0.5 l 2.26563,2.26562 h -6.628908 z" /></g></svg>
+diff --git a/modules/libpref/init/StaticPrefList.yaml b/modules/libpref/init/StaticPrefList.yaml
+--- a/modules/libpref/init/StaticPrefList.yaml
++++ b/modules/libpref/init/StaticPrefList.yaml
+@@ -12125,6 +12125,20 @@
+   value: true
+   mirror: always
+ 
++#---------------------------------------------------------------------------
++# Prefs starting with "librewolf."
++#---------------------------------------------------------------------------
++
++- name: librewolf.webgl.prompt
++  type: RelaxedAtomicBool
++  value: true
++  mirror: always
++
++- name: librewolf.webgl.prompt.hide
++  type: RelaxedAtomicBool
++  value: false
++  mirror: always
++
+ #---------------------------------------------------------------------------
+ # Prefs starting with "logging."
+ #---------------------------------------------------------------------------
+diff --git a/modules/libpref/moz.build b/modules/libpref/moz.build
+--- a/modules/libpref/moz.build
++++ b/modules/libpref/moz.build
+@@ -56,6 +56,7 @@ pref_groups = [
+     "javascript",
+     "layers",
+     "layout",
++    "librewolf",
+     "logging",
+     "mathml",
+     "media",
+diff --git a/browser/locales/en-US/chrome/browser/browser.properties b/browser/locales/en-US/chrome/browser/browser.properties
+--- a/browser/locales/en-US/chrome/browser/browser.properties
++++ b/browser/locales/en-US/chrome/browser/browser.properties
+@@ -388,1 +388,11 @@
+ gnomeSearchProviderSearchWeb=Search the web for “%S”
++
++# WebGL permission prompt
++# LOCALIZATION NOTE (webgl.siteprompt2): %S is hostname
++webgl.siteprompt2=Allow %S to create a WebGL context?
++webgl.siteprompt2.warning=This may be used to uniquely identify your computer.
++webgl.block=Block
++webgl.block.accesskey=B
++webgl.allow2=Allow
++webgl.allow2.accesskey=A
++webgl.remember2=Remember this decision
+diff --git a/browser/locales/en-US/chrome/browser/sitePermissions.properties b/browser/locales/en-US/chrome/browser/sitePermissions.properties
+--- a/browser/locales/en-US/chrome/browser/sitePermissions.properties
++++ b/browser/locales/en-US/chrome/browser/sitePermissions.properties
+@@ -66,2 +66,3 @@
+ permission.canvas.label = Extract canvas data
++permission.webgl.label = Create WebGL context
+ permission.midi.label = Access MIDI devices
+diff --git a/browser/locales/en-US/browser/browser.ftl b/browser/locales/en-US/browser/browser.ftl
+--- a/browser/locales/en-US/browser/browser.ftl
++++ b/browser/locales/en-US/browser/browser.ftl
+@@ -95,4 +95,6 @@
+ urlbar-canvas-notification-anchor =
+     .tooltiptext = Manage canvas extraction permission
++urlbar-webgl-notification-anchor =
++    .tooltiptext = Manage WebGL permission
+ urlbar-web-rtc-share-microphone-notification-anchor =
+     .tooltiptext = Manage sharing your microphone with the site
+@@ -209,4 +211,6 @@
+ urlbar-canvas-blocked =
+     .tooltiptext = You have blocked canvas data extraction for this website.
++urlbar-webgl-blocked =
++    .tooltiptext = You have blocked WebGL access for this website.
+ urlbar-midi-blocked =
+     .tooltiptext = You have blocked MIDI access for this website.
+diff --git a/browser/locales/en-US/browser/preferences/preferences.ftl b/browser/locales/en-US/browser/preferences/preferences.ftl
+--- a/browser/locales/en-US/browser/preferences/preferences.ftl
++++ b/browser/locales/en-US/browser/preferences/preferences.ftl
+@@ -2027,1 +2027,4 @@
++permissions-webgl2 =
++    .label = WebGL
++
+ permissions-localhost2 =
+diff --git a/browser/locales/en-US/browser/preferences/permissions.ftl b/browser/locales/en-US/browser/preferences/permissions.ftl
+--- a/browser/locales/en-US/browser/preferences/permissions.ftl
++++ b/browser/locales/en-US/browser/preferences/permissions.ftl
+@@ -161,2 +161,9 @@
+ 
++## Site Permissions - WebGL
++
++permissions-site-webgl-window2 =
++    .title = Settings - WebGL Permissions
++    .style = { permissions-window2.style }
++permissions-site-webgl-desc = The following websites have requested to create a WebGL context. You can specify which websites are allowed to create a WebGL context.
++
+ ## Site Permissions - Virtual Reality
