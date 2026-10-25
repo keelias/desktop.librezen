@@ -6,17 +6,16 @@
 - name: librezen.jit.enabled-by-default
   value: true
 
-# LibreZen does not yet publish signed MAR packages or Gecko update manifests.
-# Keep the built-in updater disabled until a verified LibreZen update feed exists.
-# The URL below reserves the intended GitHub Releases asset naming convention;
-# it is not live until each release includes the matching XML and MAR files.
+# LibreZen does not yet have a configured update service or release feed.
+# Disable Gecko updates and leave every update endpoint unconfigured until
+# signed MAR packages, XML manifests, and release automation are ready.
 - name: app.update.enabled
   value: false
 - name: app.update.url
-  value: "https://github.com/keelias/desktop.librezen/releases/latest/download/update-%BUILD_TARGET%-%LOCALE%.xml"
+  value: ""
 - name: app.update.url.manual
-  value: "https://github.com/keelias/desktop.librezen/releases"
+  value: ""
 - name: app.update.url.details
-  value: "https://github.com/keelias/desktop.librezen/releases"
+  value: ""
 - name: app.releaseNotesURL.prompt
-  value: "https://github.com/keelias/desktop.librezen/releases"
+  value: ""
