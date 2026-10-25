@@ -10,7 +10,7 @@ Before distributing a public release, the project should document and test at le
 - update checks and the absence or presence of a LibreZen-operated update service;
 - extension permissions and browser profile storage.
 
-The built-in Gecko updater is disabled by default in LibreZen builds, and the compiled update-host metadata no longer points at Zen's service. The configured GitHub Releases manifest URL is only a placeholder for a future feed: this repository has no published releases or signed MAR/XML update assets yet. Do not re-enable automatic updates until release automation produces and verifies platform-specific update manifests and signed MAR packages. LibreZen does not currently operate an account/sync service.
+The built-in Gecko updater is disabled by default. LibreZen's compiled update-host metadata and update, manual, details, and release-notes URLs are intentionally blank until a verified update feed and release process exist. No GitHub update endpoint is configured. Do not re-enable automatic updates until release automation produces and verifies platform-specific update manifests and signed MAR packages. LibreZen does not currently operate an account/sync service.
 
 For upstream-specific information, consult the privacy documentation published by [Mozilla](https://www.mozilla.org/privacy/), [Zen Browser](https://zen-browser.app/privacy-policy/), and [LibreWolf](https://librewolf.net/). Those policies describe their respective projects and should not be read as a complete policy for LibreZen.
 
